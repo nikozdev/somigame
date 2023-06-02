@@ -8,27 +8,23 @@
 
 _NAMESPACE_ENTER
 
-/** datadef **/
+/** typedef **/
 
-struct
-{
-    struct { size_t x = 0, y = 0; } coord;
-    struct { size_t w = 256, h = 256; } sizes;
-} window;
+/*** graphics ***/
 
-struct
+struct com_gfix_sprite_t
 {
-    float scale = 1.0;
-    struct { float x = 0.0, y = 0.0; } coord;
-    struct { float w = 1.0, h = 1.0; } sizes;
-} camera;
+    struct { float x = 0.0, y = 0.0; } sizes;
+    struct { float r = 0.0, g = 0.0, b = 0.0, a = 0.0; } color;
+};
 
-struct
+/*** physics ***/
+
+struct com_fsix_move_t
 {
-    float delta = 0.0;
-    float msnow = 0.1;
-    float mswas = 0.0;
-} timer;
+    struct { float x = 0.0, y = 0.0; } position;
+    struct { float x = 0.0, y = 0.0; } velocity;
+};
 
 /*** keyboard ***/
 
@@ -45,6 +41,34 @@ struct key_bind_t
 };
 
 /** datadef **/
+
+struct window_t
+{
+    struct { size_t x = 0, y = 0; } coord;
+    struct { size_t w = 256, h = 256; } sizes;
+} window;
+
+struct camera_t
+{
+    float scale = 1.0;
+    struct { float x = 0.0, y = 0.0; } coord;
+    struct { float w = 1.0, h = 1.0; } sizes;
+} camera;
+
+struct timer_t
+{
+    float delta = 0.0;
+    float msnow = 0.1;
+    float mswas = 0.0;
+} timer;
+
+struct gfix_t
+{
+} gfix;
+
+struct fsix_t
+{
+} fsix;
 
 key_list_t key_list;
 
@@ -79,36 +103,47 @@ int main(int argc, char** argv)
     /* keyboard */
     auto key_count = 2 << (sizeof(char) * 8);
     key_list = key_list_t(key_count);
-    key_list['q'] = new key_bind_t;
-    key_list['q']->func = [](){
+    /** menu **/
+    key_list['m'] = new key_bind_t;
+    key_list['m']->list = key_list_t(key_count);
+    key_list['m']->list['q'] = new key_bind_t;
+    key_list['m']->list['q']->func = [](){
         exit(_ERROR_NONE);
     };
-    key_list['a'] = new key_bind_t;
-    key_list['a']->func = [](){
+    key_list['m']->list['r'] = new key_bind_t;
+    key_list['m']->list['r']->func = [](){
+        camera = camera_t();
+    };
+    /** view **/
+    key_list['v'] = new key_bind_t;
+    key_list['v']->list = key_list_t(key_count);
+    key_list['v']->list['a'] = new key_bind_t;
+    key_list['v']->list['a']->func = [](){
         camera.coord.x -= camera.scale;
     };
-    key_list['d'] = new key_bind_t;
-    key_list['d']->func = [](){
+    key_list['v']->list['d'] = new key_bind_t;
+    key_list['v']->list['d']->func = [](){
         camera.coord.x += camera.scale;
     };
-    key_list['s'] = new key_bind_t;
-    key_list['s']->func = [](){
+    key_list['v']->list['s'] = new key_bind_t;
+    key_list['v']->list['s']->func = [](){
         camera.coord.y -= camera.scale;
     };
-    key_list['w'] = new key_bind_t;
-    key_list['w']->func = [](){
+    key_list['v']->list['w'] = new key_bind_t;
+    key_list['v']->list['w']->func = [](){
         camera.coord.y += camera.scale;
     };
-    key_list['z'] = new key_bind_t;
-    key_list['z']->list = key_list_t(key_count);
-    key_list['z']->list['i'] = new key_bind_t;
-    key_list['z']->list['i']->func = [](){
+    key_list['v']->list['z'] = new key_bind_t;
+    key_list['v']->list['z']->list = key_list_t(key_count);
+    key_list['v']->list['z']->list['i'] = new key_bind_t;
+    key_list['v']->list['z']->list['i']->func = [](){
         camera.scale /= 2.0;
     };
-    key_list['z']->list['o'] = new key_bind_t;
-    key_list['z']->list['o']->func = [](){
+    key_list['v']->list['z']->list['o'] = new key_bind_t;
+    key_list['v']->list['z']->list['o']->func = [](){
         camera.scale *= 2.0;
     };
+    /* camera */
     glutKeyboardFunc(proc_key_board);
     glutSpecialFunc(proc_key_board_special);
     /* oput */
@@ -126,11 +161,29 @@ void draw(void)
 {
     glClear(GL_COLOR_BUFFER_BIT);
     glBegin(GL_QUADS);
+    glColor4d(0.5, 0.5, 0.5, 1.0);
     glVertex2d(+1.0, +0.0);
     glVertex2d(+0.0, +1.0);
     glVertex2d(-1.0, -0.0);
     glVertex2d(-0.0, -1.0);
     glEnd();
+    /* bottom bar */
+    auto xl = -camera.sizes.w/2.0;
+    auto xr = +camera.sizes.w/2.0;
+    auto yb = -camera.sizes.h/2.0;
+    glBegin(GL_QUADS);
+    glColor4d(0.0, 0.0, 0.0, 1.0);
+    glVertex2d(xl, yb);
+    glVertex2d(xl, yb + camera.scale * 0.1);
+    glVertex2d(xr, yb + camera.scale * 0.1);
+    glVertex2d(xr, yb);
+    glEnd();
+    glColor4d(1.0, 1.0, 1.0, 1.0);
+    glRasterPos2d(xl + camera.scale * 0.025, yb + camera.scale * 0.025);
+    for (auto&key:key_line)
+    {
+        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, key);
+    }
     glutSwapBuffers();
 }
 
@@ -178,7 +231,6 @@ void proc_key_board_special(int key, int _mouse_x, int _mouse_y)
 void key_line_reset()
 {
     key_bind_used = _NULL;
-    key_line = "";
 }
 
 void key_line_apply()
@@ -199,11 +251,12 @@ void key_line_insert(unsigned char key)
     }
     else
     {
+        key_line = "";
         bind = key_list[key];
     }
+    key_line += key;
     if (bind)
     {
-        key_line += key;
         key_bind_used = bind;
         if (bind->list.empty())
         {
@@ -215,6 +268,7 @@ void key_line_insert(unsigned char key)
     }
     else
     {
+        key_line += ": is not a valid keybind";
         key_line_reset();
     }
 }
