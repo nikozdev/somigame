@@ -1,7 +1,7 @@
 # basic
 
 NAME?=somigame
-VNUM?=0xa0a0a1
+VNUM?=0xa0a0a2
 TYPE?=RUN
 
 # files
@@ -67,10 +67,12 @@ CFLAGS+= -Wno-initializer-overrides
 CFLAGS+= -D_NAME=$(NAME) -D_NAME_STR=\"$(NAME)\"
 CFLAGS+= -D_VNUM=$(VNUM) -D_VNUM_STR=\"$(VNUM)\"
 CFLAGS+= -D_TYPE_$(TYPE) -D_TYPE_STR=\"$(TYPE)\"
+CFLAGS+= $(shell pkg-config --cflags opengl gl glu glut)
 
 ## linker
 
 LMAKER?= $(shell which g++) -o
+LFLAGS+= $(shell pkg-config --libs opengl gl glu glut)
 
 ## libraries
 

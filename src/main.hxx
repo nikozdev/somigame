@@ -3,6 +3,7 @@
 /* headers */
 
 #include "head.hxx"
+#include "gfix.hxx"
 
 /* content */
 

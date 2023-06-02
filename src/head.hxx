@@ -2,8 +2,12 @@
 
 /* headers */
 
+#include <cstdio>
 #include <iostream>
+
 #include <string>
+
+#include <cmath>
 
 /* defines */
 
