@@ -5,6 +5,8 @@
 #include <cstdio>
 #include <iostream>
 
+#include <vector>
+
 #include <string>
 
 #include <cmath>
@@ -41,6 +43,10 @@
 #define _FALSE false
 #define _TRUTH true
 
+/** memory **/
+
+#define _NULL nullptr
+
 /** debug **/
 
 #define _ERROR_NONE 0
@@ -48,19 +54,5 @@
 /* content */
 
 _NAMESPACE_ENTER
-
-/** typedef **/
-
-using bool_t = bool;
-using flag_t = bool_t;
-
-using v1b_t = bool_t;
-
-using v1s_t = int;
-using v1u_t = unsigned int;
-
-using char_t = char;
-using cstr_t = const char_t*;
-using dstr_t = std::string;
 
 _NAMESPACE_LEAVE
