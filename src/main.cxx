@@ -31,18 +31,48 @@ int main(int argc, char** argv)
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     gluOrtho2D(-128.0, +128.0, -64.0, +64.0);
-    /* loop */
-    glutDisplayFunc(work);
+    /* iput */
+    glutKeyboardFunc(proc_keyboard);
+    glutMouseFunc(proc_mousedev);
+    /* oput */
+    glutDisplayFunc(draw);
+    /* work */
+    glutIdleFunc(work);
     glutMainLoop();
     /* final */
     std::clog << "good day, sir !" << std::endl;
     return _ERROR_NONE;
 }
 
-void work(void)
+void draw(void)
 {
+    auto ccr = std::sin(clock() / 10000.0);
+    auto ccg = std::cos(clock() / 10000.0);
+    auto ccb = std::sin(clock() / 10000.0);
+    glClearColor(ccr, ccg, ccb, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
     glutSwapBuffers();
+}
+void work(void)
+{
+    glutPostRedisplay();
+}
+
+void proc_resizing(unsigned int sizew, unsigned int sizeh)
+{
+}
+
+void proc_keyboard(unsigned char key, int x, int y)
+{
+    switch(key)
+    {
+        case 'q':
+            exit(_ERROR_NONE);
+            break;
+    }
+}
+void proc_mousedev(int, int, int, int)
+{
 }
 
 _NAMESPACE_LEAVE
