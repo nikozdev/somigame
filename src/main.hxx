@@ -9,6 +9,8 @@
 
 _NAMESPACE_ENTER
 
-int main(int argc, const char** argv);
+int main(int, char**);
+
+void work(void);
 
 _NAMESPACE_LEAVE
