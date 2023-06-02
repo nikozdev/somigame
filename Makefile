@@ -1,7 +1,7 @@
 # basic
 
 NAME?=somigame
-VNUM?=0xa0a0a0
+VNUM?=0xa0a0a1
 TYPE?=RUN
 
 # files
@@ -71,7 +71,6 @@ CFLAGS+= -D_TYPE_$(TYPE) -D_TYPE_STR=\"$(TYPE)\"
 ## linker
 
 LMAKER?= $(shell which g++) -o
-LFLAGS+= #$(shell pkg-config --libs ...)
 
 ## libraries
 
@@ -87,7 +86,7 @@ TERMCP:= $(shell which cp) -riv
 TERMRM:= $(shell which rm) -rfv
 TERMMV:= $(shell which mv) -iv
 TERMMD:= $(shell which mkdir) -p
-TERMDB:= $(shell which lldb)
+TERMDB:= $(shell which gdb)
 
 # rules
 
