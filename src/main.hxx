@@ -4,33 +4,36 @@
 
 #include "head.hxx"
 #include "gfix.hxx"
+#include "fsix.hxx"
+#include "oput.hxx"
+#include "iput.hxx"
 
 /* content */
 
 _NAMESPACE_ENTER
 
-/** actions **/
+/** typedef **/
 
-/*** application ***/
+typedef struct timer_t
+{
+    float delta = 0.0;
+    float msnow = 0.1;
+    float mswas = 0.0;
+} timer_t;
+
+/** datadef **/
+
+extern timer_t timer;
+
+/** actions **/
 
 int main(int, char**);
 
 void draw(void);
 void work(void);
 
-/*** callbacks ***/
-
 void proc_resize(int, int);
 
-void proc_key_board(unsigned char, int, int);
-void proc_key_board_special(int, int, int);
-
 /*** utility ***/
-
-/**** keyboard ****/
-
-void key_line_reset();
-void key_line_apply();
-void key_line_insert(unsigned char key);
 
 _NAMESPACE_LEAVE
