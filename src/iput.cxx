@@ -55,7 +55,7 @@ static void key_line_insert(key_code_t code)
     }
     else
     {
-        key_line += ": is not a valid keybind";
+        key_line = "\"" + key_line + "\"" + ": is not a valid keybind";
         key_line_reset();
     }
 }
@@ -104,6 +104,7 @@ void proc_key_board(unsigned char key, int _mouse_x, int _mouse_y)
 
 void proc_key_board_special(int key, int _mouse_x, int _mouse_y)
 {
+    key_line_insert(key);
 }
 
 _NAMESPACE_LEAVE

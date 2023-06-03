@@ -5,12 +5,14 @@
 #include <cstdio>
 #include <iostream>
 
+#include <algorithm>
 #include <vector>
 
 #include <string>
 #include <cstring>
 
 #include <cmath>
+#include <cstdint>
 
 /* defines */
 

@@ -10,10 +10,10 @@ _NAMESPACE_ENTER
 
 typedef struct com_fsix_body_t
 {
-    float rotation = 0.0;
-    float rotation_velocity = 0.0;
-    struct { float x = 0.0, y = 0.0; } position;
-    struct { float x = 0.0, y = 0.0; } position_velocity;
+    int rotation = 0;
+    int rotation_velocity = 0;
+    struct { int x = 0, y = 0; } position;
+    struct { int x = 0, y = 0; } position_velocity;
 } com_fsix_body_t;
 
 typedef struct fsix_t
