@@ -9,6 +9,8 @@ _NAMESPACE_ENTER
 /** datadef **/
 
 std::string key_line = "";
+int key_narg_sign = +1;
+int key_narg = 0;
 
 key_list_t key_list = key_list_t(_KEY_COUNT);
 key_bind_t* key_bind_used = _NULL;
@@ -18,14 +20,16 @@ key_bind_t* key_bind_used = _NULL;
 static void key_line_reset()
 {
     key_bind_used = _NULL;
+    key_narg = 0;
 }
 
 static void key_line_apply()
 {
     if (key_bind_used->func)
     {
-        key_bind_used->func();
+        key_bind_used->func(key_narg * key_narg_sign);
     }
+    key_line += "[done]";
     key_line_reset();
 }
 
@@ -99,12 +103,18 @@ void key_bind_set(key_path_t path, key_func_t func)
 
 void proc_key_board(unsigned char key, int _mouse_x, int _mouse_y)
 {
-    key_line_insert(key);
-}
-
-void proc_key_board_special(int key, int _mouse_x, int _mouse_y)
-{
-    key_line_insert(key);
+    if (std::isdigit(key))
+    {
+        key_narg = key_narg * 10 + (key - '0');
+    }
+    else if (key == '-')
+    {
+        key_narg_sign *= -1;
+    }
+    else
+    {
+        key_line_insert(key);
+    }
 }
 
 _NAMESPACE_LEAVE

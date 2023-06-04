@@ -44,7 +44,7 @@ typedef struct quad_t {
     struct { int x = 0, y = 0; } coord;
     struct { int w = 0, h = 0; } sizes;
     struct { unsigned char r = 0, g = 0, b = 0; } color;
-    image_t image;
+    size_t image_index = 0;
 } quad_t;
 
 typedef struct text_t {
@@ -80,6 +80,7 @@ extern void load_image(std::string path, image_t*image);
 extern void load_image_index(std::string path, size_t index);
 
 extern void view_move(int stepx, int stepy);
+extern void view_goto(int stepx, int stepy);
 extern void view_scale(int scale);
 
 _NAMESPACE_LEAVE

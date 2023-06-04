@@ -20,18 +20,44 @@ gfix_t gfix;
 void gfix_init()
 {
     std::clog << "[opengl-version] " << glGetString(GL_VERSION) << std::endl;
+    /* settings */
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_STENCIL_TEST);
-    glDisable(GL_TEXTURE_3D);
-    glEnable(GL_CULL_FACE);
-    glEnable(GL_POINT_SMOOTH);
-    glEnable(GL_LINE_SMOOTH);
     glEnable(GL_TEXTURE_1D);
     glEnable(GL_TEXTURE_2D);
+    glDisable(GL_TEXTURE_3D);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
+    glEnable(GL_POINT_SMOOTH);
+    glEnable(GL_LINE_SMOOTH);
     glShadeModel(GL_SMOOTH);
+    /* images */
     stbi_set_flip_vertically_on_load(true);
-    load_image_index("rsc/logo16x16.png", 0);
+    load_image_index("rsc/gfix/meta-logo.png", 1);
+    load_image_index("rsc/gfix/entt-main-ff-ai-f1.png", 2);
+    /* keybinds */
+    /** view **/
+    /*** goto ***/
+    key_bind_set("vgx", [](int narg){ view_goto(narg, 0); });
+    key_bind_set("vgy", [](int narg){ view_goto(0, narg); });
+    /*** goto ***/
+    key_bind_set("va", [](int narg){ view_move((-1) * (1+narg), 0); });
+    key_bind_set("vd", [](int narg){ view_move((+1) * (1+narg), 0); });
+    key_bind_set("vs", [](int narg){ view_move(0, (-1) * (1+narg)); });
+    key_bind_set("vw", [](int narg){ view_move(0, (+1) * (1+narg)); });
+    key_bind_set("vz", [](int narg){ view_scale(narg); });
+    /** graphics **/
+    /*** mode ***/
+    /**** wire ****/
+    key_bind_set("gmw", [](int narg){ glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); });
+    /**** fill ****/
+    key_bind_set("gmf", [](int narg){ glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); });
 }
+
+/*** drawing ***/
 
 static void draw_init()
 {
@@ -53,11 +79,11 @@ static void draw_init()
 
 static void draw_proc()
 {
-    glBindTexture(GL_TEXTURE_2D, gfix.image_list[0].index);
+    /* test quad */
     draw_global_quad({
         .scale = 1,
         .coord = {
-            .x = 256,
+            .x = 0,
             .y = 0,
         },
         .sizes = {
@@ -69,29 +95,8 @@ static void draw_proc()
             .g = 255,
             .b = 255,
         },
+        .image_index = 2,
     });
-    glBindTexture(GL_TEXTURE_2D, 0);
-    {
-        glPointSize(10);
-        glBegin(GL_POINTS);
-        auto*image = &gfix.image_list[0];
-        auto*idata = image->mdata;
-        auto nchan = image->nchan;
-        auto scale = ((1 << 8) >> 4);
-        auto sizes_w = image->sizes.w;
-        auto sizes_h = image->sizes.h;
-        auto coord_x = -sizes_w/2;
-        auto coord_y = -sizes_h/2;
-        for (auto itery = 0; itery < sizes_h; itery++)
-        {
-            for (auto iterx = 0; iterx < sizes_w; iterx++)
-            {
-                glColor3ubv(&idata[((sizes_w * itery) + iterx) * nchan]);
-                glVertex2i((coord_x + iterx) * scale, (coord_y + itery) * scale);
-            }
-        }
-        glEnd();
-    }
     /* gui */
     draw_screen_quad({
         .scale = 1,
@@ -114,11 +119,13 @@ static void draw_proc()
     memset(mdata, '\0', 128);
     std::sprintf(
         mdata,
-        "[ now=%03zu.%03zu; fps=%05zu ] %s",
+        "[ now=%03zu.%03zu; fps=%05zu; pos=%ix%i; scale=%i; ] %s(%+dx%d)",
         timer.now_mil/1000,
         timer.now_mil%1000,
         timer.fps_num,
-        &key_line[0]
+        gfix.camera.coord.x, gfix.camera.coord.y,
+        gfix.camera.scale,
+        &key_line[0], key_narg_sign, key_narg
     );
     draw_screen_text({
         .mdata = mdata,
@@ -138,6 +145,24 @@ static void draw_proc()
             .b = 240,
         },
     }, _SCREEN_FROM_LB);
+    /* logo */
+    draw_screen_quad({
+        .scale = 1,
+        .coord = {
+            .x = 0,
+            .y = 0,
+        },
+        .sizes = {
+            .w = 32,
+            .h = 32,
+        },
+        .color = {
+            .r = 255,
+            .g = 255,
+            .b = 255,
+        },
+        .image_index = 1,
+    }, _SCREEN_FROM_RB);
 }
 
 static void draw_quit()
@@ -158,6 +183,10 @@ void draw_global_quad(quad_t quad)
     auto xr = quad.coord.x + quad.sizes.w*quad.scale/2;
     auto yb = quad.coord.y - quad.sizes.h*quad.scale/2;
     auto yt = quad.coord.y + quad.sizes.h*quad.scale/2;
+    if (quad.image_index > 0)
+    {
+        glBindTexture(GL_TEXTURE_2D, gfix.image_list[quad.image_index].index);
+    }
     glBegin(GL_QUADS);
     glColor3ubv(&quad.color.r);
     glTexCoord2i(0, 0);
@@ -169,6 +198,10 @@ void draw_global_quad(quad_t quad)
     glTexCoord2i(0, 1);
     glVertex2i(xl, yt);
     glEnd();
+    if (quad.image_index > 0)
+    {
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
 }
 
 void draw_screen_quad(quad_t quad, screen_from_e from)
@@ -202,6 +235,12 @@ void draw_screen_quad(quad_t quad, screen_from_e from)
             yt -= gfix.camera.sizes.h / 2;
         } break;
         case _SCREEN_FROM_RB: {
+            xl -= quad.sizes.w*quad.scale;
+            xl += gfix.camera.sizes.w / 2;
+            xr += gfix.camera.sizes.w / 2;
+            yb -= gfix.camera.sizes.h / 2;
+            yt += quad.sizes.h*quad.scale;
+            yt -= gfix.camera.sizes.h / 2;
         } break;
         case _SCREEN_FROM_LT: {
         } break;
@@ -216,13 +255,25 @@ void draw_screen_quad(quad_t quad, screen_from_e from)
     yb += gfix.camera.coord.y;
     yt *= gfix.camera.scale;
     yt += gfix.camera.coord.y;
+    if (quad.image_index > 0)
+    {
+        glBindTexture(GL_TEXTURE_2D, gfix.image_list[quad.image_index].index);
+    }
     glBegin(GL_QUADS);
     glColor3ubv(&quad.color.r);
+    glTexCoord2i(0, 0);
     glVertex2i(xl, yb);
+    glTexCoord2i(1, 0);
     glVertex2i(xr, yb);
+    glTexCoord2i(1, 1);
     glVertex2i(xr, yt);
+    glTexCoord2i(0, 1);
     glVertex2i(xl, yt);
     glEnd();
+    if (quad.image_index > 0)
+    {
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
 }
 
 void draw_screen_text(text_t text, screen_from_e from)
@@ -278,6 +329,8 @@ void draw_screen_text(text_t text, screen_from_e from)
     glPopMatrix();
 }
 
+/*** files ***/
+
 void load_image(std::string path, image_t*image)
 {
     image->mdata = stbi_load(&path[0], &image->sizes.w, &image->sizes.h, &image->nchan, 0);
@@ -307,6 +360,7 @@ void load_image(std::string path, image_t*image)
         std::cerr << "failed image loading: " << path << std::endl;
     }
 }
+
 void load_image_index(std::string path, size_t index)
 {
     if (gfix.image_list.size() <= index)
@@ -314,6 +368,14 @@ void load_image_index(std::string path, size_t index)
         gfix.image_list.resize(index + 1);
     }
     return load_image(path, &gfix.image_list[index]);
+}
+
+/*** view ***/
+
+void view_goto(int stepx, int stepy)
+{
+    gfix.camera.coord.x = stepx;
+    gfix.camera.coord.y = stepy;
 }
 
 void view_move(int stepx, int stepy)

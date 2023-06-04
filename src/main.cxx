@@ -31,17 +31,13 @@ int main(int argc, char** argv)
     key_board_init();
     glutSetKeyRepeat(GLUT_KEY_REPEAT_ON);
     /** menu **/
-    key_bind_set("mq", [](){ exit(_ERROR_NONE); });
-    key_bind_set("mr", [](){ gfix.camera = camera_t(); });
+    /*** quit ***/
+    key_bind_set("mq", [](int narg){ exit(_ERROR_NONE); });
+    /*** reset ***/
+    key_bind_set("mr", [](int narg){
+    });
     /** view **/
-    key_bind_set("vma", [](){ view_move(-1, 0); });
-    key_bind_set("vmd", [](){ view_move(+1, 0); });
-    key_bind_set("vms", [](){ view_move(0, -1); });
-    key_bind_set("vmw", [](){ view_move(0, +1); });
-    key_bind_set("vsi", [](){ view_scale(-1); });
-    key_bind_set("vso", [](){ view_scale(+1); });
     glutKeyboardFunc(proc_key_board);
-    glutSpecialFunc(proc_key_board_special);
     /* oput */
     glutDisplayFunc(draw_loop);
     glutReshapeFunc([](int sizew, int sizeh) {
