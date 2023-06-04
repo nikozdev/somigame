@@ -4,6 +4,9 @@
 #include "main.hxx"
 #include "iput.hxx"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb/stb_image.h>
+
 /* content */
 
 _NAMESPACE_ENTER
@@ -13,6 +16,22 @@ _NAMESPACE_ENTER
 gfix_t gfix;
 
 /** actions **/
+
+void gfix_init()
+{
+    std::clog << "[opengl-version] " << glGetString(GL_VERSION) << std::endl;
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_STENCIL_TEST);
+    glDisable(GL_TEXTURE_3D);
+    glEnable(GL_CULL_FACE);
+    glEnable(GL_POINT_SMOOTH);
+    glEnable(GL_LINE_SMOOTH);
+    glEnable(GL_TEXTURE_1D);
+    glEnable(GL_TEXTURE_2D);
+    glShadeModel(GL_SMOOTH);
+    stbi_set_flip_vertically_on_load(true);
+    load_image_index("rsc/logo16x16.png", 0);
+}
 
 static void draw_init()
 {
@@ -34,23 +53,46 @@ static void draw_init()
 
 static void draw_proc()
 {
+    glBindTexture(GL_TEXTURE_2D, gfix.image_list[0].index);
     draw_global_quad({
         .scale = 1,
         .coord = {
-            .x = 0,
+            .x = 256,
             .y = 0,
         },
         .sizes = {
-            .w = 128,
-            .h = 128,
+            .w = 256,
+            .h = 256,
         },
         .color = {
-            .r = 128,
-            .g = 128,
-            .b = 128,
+            .r = 255,
+            .g = 255,
+            .b = 255,
         },
     });
-    /* bottom bar */
+    glBindTexture(GL_TEXTURE_2D, 0);
+    {
+        glPointSize(10);
+        glBegin(GL_POINTS);
+        auto*image = &gfix.image_list[0];
+        auto*idata = image->mdata;
+        auto nchan = image->nchan;
+        auto scale = ((1 << 8) >> 4);
+        auto sizes_w = image->sizes.w;
+        auto sizes_h = image->sizes.h;
+        auto coord_x = -sizes_w/2;
+        auto coord_y = -sizes_h/2;
+        for (auto itery = 0; itery < sizes_h; itery++)
+        {
+            for (auto iterx = 0; iterx < sizes_w; iterx++)
+            {
+                glColor3ubv(&idata[((sizes_w * itery) + iterx) * nchan]);
+                glVertex2i((coord_x + iterx) * scale, (coord_y + itery) * scale);
+            }
+        }
+        glEnd();
+    }
+    /* gui */
     draw_screen_quad({
         .scale = 1,
         .coord = {
@@ -118,9 +160,13 @@ void draw_global_quad(quad_t quad)
     auto yt = quad.coord.y + quad.sizes.h*quad.scale/2;
     glBegin(GL_QUADS);
     glColor3ubv(&quad.color.r);
+    glTexCoord2i(0, 0);
     glVertex2i(xl, yb);
+    glTexCoord2i(1, 0);
     glVertex2i(xr, yb);
+    glTexCoord2i(1, 1);
     glVertex2i(xr, yt);
+    glTexCoord2i(0, 1);
     glVertex2i(xl, yt);
     glEnd();
 }
@@ -232,10 +278,48 @@ void draw_screen_text(text_t text, screen_from_e from)
     glPopMatrix();
 }
 
+void load_image(std::string path, image_t*image)
+{
+    image->mdata = stbi_load(&path[0], &image->sizes.w, &image->sizes.h, &image->nchan, 0);
+    if (image->mdata)
+    {
+        image->msize = image->sizes.w * image->sizes.h * image->nchan;
+        glGenTextures(1, &image->index);
+        glBindTexture(GL_TEXTURE_2D, image->index);
+        glTexImage2D(
+            GL_TEXTURE_2D, 0,
+            image->nchan, image->sizes.w, image->sizes.h, 0,
+            image->nchan == 4 ? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE,
+            image->mdata
+        );
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        std::clog << "--[[load_image]]--" << std::endl;
+        std::clog << "[path]=" << path << std::endl;
+        std::clog << "[sizes]=" << image->sizes.h << "x" << image->sizes.h << std::endl;
+        std::clog << "[nchan]=" << image->nchan << std::endl;
+        std::clog << "[msize]=" << image->msize << std::endl;
+        std::clog << "[index]=" << image->index << std::endl;
+    }
+    else
+    {
+        std::cerr << "failed image loading: " << path << std::endl;
+    }
+}
+void load_image_index(std::string path, size_t index)
+{
+    if (gfix.image_list.size() <= index)
+    {
+        gfix.image_list.resize(index + 1);
+    }
+    return load_image(path, &gfix.image_list[index]);
+}
+
 void view_move(int stepx, int stepy)
 {
-    gfix.camera.coord.x += stepx * (2 << gfix.camera.scale);
-    gfix.camera.coord.y += stepy * (2 << gfix.camera.scale);
+    gfix.camera.coord.x += stepx * (1 << 4 << gfix.camera.scale);
+    gfix.camera.coord.y += stepy * (1 << 4 << gfix.camera.scale);
 }
 
 void view_scale(int scale)

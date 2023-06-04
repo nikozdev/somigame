@@ -26,10 +26,7 @@ int main(int argc, char** argv)
     glutInitWindowSize(gfix.window.sizes.w, gfix.window.sizes.h);
     glutCreateWindow(_NAME_STR);
     /* graphics */
-    glDisable(GL_DEPTH_TEST);
-    glDisable(GL_STENCIL_TEST);
-    glEnable(GL_CULL_FACE);
-    glEnable(GL_LINE_SMOOTH);
+    gfix_init();
     /* keyboard */
     key_board_init();
     glutSetKeyRepeat(GLUT_KEY_REPEAT_ON);
