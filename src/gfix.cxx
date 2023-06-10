@@ -15,6 +15,17 @@ _NAMESPACE_ENTER
 
 gfix_t gfix;
 
+/*** meta ***/
+
+struct sort_by_layer_t {
+    bool operator() (const ent_t& lent, const ent_t& rent)
+    {
+        auto lent_layer = ecos.reg.get<com_layer_t>(lent);
+        auto rent_layer = ecos.reg.get<com_layer_t>(rent);
+        return lent_layer.index < rent_layer.index;
+    }
+} sort_by_layer;
+
 /** actions **/
 
 void gfix_init()
@@ -41,20 +52,64 @@ void gfix_init()
     /* keybinds */
     /** view **/
     /*** goto ***/
-    key_bind_set("vgx", [](int narg){ view_goto(narg, 0); });
-    key_bind_set("vgy", [](int narg){ view_goto(0, narg); });
-    /*** goto ***/
-    key_bind_set("va", [](int narg){ view_move((-1) * (1+narg), 0); });
-    key_bind_set("vd", [](int narg){ view_move((+1) * (1+narg), 0); });
-    key_bind_set("vs", [](int narg){ view_move(0, (-1) * (1+narg)); });
-    key_bind_set("vw", [](int narg){ view_move(0, (+1) * (1+narg)); });
-    key_bind_set("vz", [](int narg){ view_scale(narg); });
+    key_bind_set("vgx", [](int narg){ view_goto({ narg, gfix.camera.coord.y }); });
+    key_bind_set("vgy", [](int narg){ view_goto({ gfix.camera.coord.x, narg }); });
+    /*** move ***/
+    key_bind_set("va", [](int narg){ view_move({ .x = (-1) * (1+narg), .y = 0 }); });
+    key_bind_set("vd", [](int narg){ view_move({ .x = (+1) * (1+narg), .y = 0 }); });
+    key_bind_set("vs", [](int narg){ view_move({ .x = 0, .y = (-1) * (1+narg) }); });
+    key_bind_set("vw", [](int narg){ view_move({ .x = 0, .y = (+1) * (1+narg) }); });
+    /*** zoom ***/
+    key_bind_set("vz", [](int narg){ view_zoom({ .x = narg, .y = narg }); });
     /** graphics **/
     /*** mode ***/
     /**** wire ****/
     key_bind_set("gmw", [](int narg){ glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); });
     /**** fill ****/
     key_bind_set("gmf", [](int narg){ glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); });
+    /* entity component system */
+    { /* main entity */
+        ent_t ent = ecos.reg.create();
+        ecos.reg.emplace<com_sname_t>(ent, "entt-main");
+        ecos.reg.emplace<com_layer_t>(ent, _LAYER_MG + 0);
+        ecos.reg.emplace<com_coord_t>(ent, 0, 0);
+        ecos.reg.emplace<com_sizes_t>(ent, 256, 256);
+        ecos.reg.emplace<com_scale_t>(ent, 1, 1);
+        ecos.reg.emplace<com_color_t>(ent, 255, 255, 255);
+        ecos.reg.emplace<com_image_t>(ent, 2);
+    }
+    { /* gui-status-quad */
+        ent_t ent = ecos.reg.create();
+        ecos.reg.emplace<com_sname_t>(ent, "gui-status-quad");
+        ecos.reg.emplace<com_layer_t>(ent, _LAYER_UI + 0);
+        ecos.reg.emplace<com_coord_t>(ent, 0, 0);
+        ecos.reg.emplace<com_sizes_t>(ent, gfix.camera.sizes.w, 32);
+        ecos.reg.emplace<com_scale_t>(ent, 1, 1);
+        ecos.reg.emplace<com_color_t>(ent, 64, 64, 64);
+        ecos.reg.emplace<com_screen_from_t>(ent, _SCREEN_FROM_LB);
+    }
+    { /* gui-status-text */
+        auto ent = ecos.reg.create();
+        ecos.reg.emplace<com_sname_t>(ent, "gui-status-text");
+        ecos.reg.emplace<com_layer_t>(ent, _LAYER_UI + 1);
+        ecos.reg.emplace<com_string_t>(ent, new char[256], 256);
+        ecos.reg.emplace<com_coord_t>(ent, 12, 12);
+        ecos.reg.emplace<com_sizes_t>(ent, 16, 16);
+        ecos.reg.emplace<com_scale_t>(ent, 1, 1);
+        ecos.reg.emplace<com_color_t>(ent, 240, 240, 240);
+        ecos.reg.emplace<com_screen_from_t>(ent, _SCREEN_FROM_LB);
+    }
+    { /* logo */
+        ent_t ent = ecos.reg.create();
+        ecos.reg.emplace<com_sname_t>(ent, "gui-status-logo");
+        ecos.reg.emplace<com_layer_t>(ent, _LAYER_UI + 2);
+        ecos.reg.emplace<com_coord_t>(ent, 0, 0);
+        ecos.reg.emplace<com_sizes_t>(ent, 32, 32);
+        ecos.reg.emplace<com_scale_t>(ent, 1, 1);
+        ecos.reg.emplace<com_color_t>(ent, 255, 255, 255);
+        ecos.reg.emplace<com_image_t>(ent, 1);
+        ecos.reg.emplace<com_screen_from_t>(ent, _SCREEN_FROM_RB);
+    }
 }
 
 /*** drawing ***/
@@ -68,10 +123,10 @@ static void draw_init()
     /* camera */
     gfix.camera.sizes.w = gfix.window.sizes.w;
     gfix.camera.sizes.h = gfix.window.sizes.h;
-    auto xl = gfix.camera.coord.x - gfix.camera.sizes.w*gfix.camera.scale/2;
-    auto xr = gfix.camera.coord.x + gfix.camera.sizes.w*gfix.camera.scale/2;
-    auto yb = gfix.camera.coord.y - gfix.camera.sizes.h*gfix.camera.scale/2;
-    auto yt = gfix.camera.coord.y + gfix.camera.sizes.h*gfix.camera.scale/2;
+    auto xl = gfix.camera.coord.x - gfix.camera.sizes.w * gfix.camera.scale.x / 2;
+    auto xr = gfix.camera.coord.x + gfix.camera.sizes.w * gfix.camera.scale.x / 2;
+    auto yb = gfix.camera.coord.y - gfix.camera.sizes.h * gfix.camera.scale.y / 2;
+    auto yt = gfix.camera.coord.y + gfix.camera.sizes.h * gfix.camera.scale.y / 2;
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     gluOrtho2D(xl, xr, yb, yt);
@@ -79,90 +134,90 @@ static void draw_init()
 
 static void draw_proc()
 {
-    /* test quad */
-    draw_global_quad({
-        .scale = 1,
-        .coord = {
-            .x = 0,
-            .y = 0,
-        },
-        .sizes = {
-            .w = 256,
-            .h = 256,
-        },
-        .color = {
-            .r = 255,
-            .g = 255,
-            .b = 255,
-        },
-        .image_index = 2,
-    });
-    /* gui */
-    draw_screen_quad({
-        .scale = 1,
-        .coord = {
-            .x = 0,
-            .y = 0,
-        },
-        .sizes = {
-            .w = gfix.camera.sizes.w,
-            .h = 32,
-        },
-        .color = {
-            .r = 16,
-            .g = 16,
-            .b = 16,
-        },
-    }, _SCREEN_FROM_LB);
-    constexpr auto msize = 128;
-    char mdata[msize];
-    memset(mdata, '\0', 128);
-    std::sprintf(
-        mdata,
-        "[ now=%03zu.%03zu; fps=%05zu; pos=%ix%i; scale=%i; ] %s(%+dx%d)",
-        timer.now_mil/1000,
-        timer.now_mil%1000,
-        timer.fps_num,
-        gfix.camera.coord.x, gfix.camera.coord.y,
-        gfix.camera.scale,
-        &key_line[0], key_narg_sign, key_narg
-    );
-    draw_screen_text({
-        .mdata = mdata,
-        .msize = msize,
-        .scale = 1,
-        .coord = {
-            .x = 12,
-            .y = 12,
-        },
-        .sizes = {
-            .w = 16,
-            .h = 16,
-        },
-        .color = {
-            .r = 240,
-            .g = 240,
-            .b = 240,
-        },
-    }, _SCREEN_FROM_LB);
-    /* logo */
-    draw_screen_quad({
-        .scale = 1,
-        .coord = {
-            .x = 0,
-            .y = 0,
-        },
-        .sizes = {
-            .w = 32,
-            .h = 32,
-        },
-        .color = {
-            .r = 255,
-            .g = 255,
-            .b = 255,
-        },
-        .image_index = 1,
-    }, _SCREEN_FROM_RB);
+    /* entity component system */
+    { /* change unique ones */
+        auto view = ecos.reg.view<com_sname_t>();
+        for (auto [ent, sname] : view.each())
+        {
+            if (sname.title == "gui-status-quad")
+            {
+                auto&sizes = ecos.reg.get<com_sizes_t>(ent);
+                sizes.w = gfix.camera.sizes.w;
+            }
+            else if (sname.title == "gui-status-text")
+            {
+                auto&string = ecos.reg.get<com_string_t>(ent);
+                memset(string.mdata, '\0', 256);
+                std::sprintf(
+                    string.mdata,
+                    "[ now=%03zu.%03zu; fps=%05zu; pos=%ix%i; scale=%ix%i; ] %s(%+dx%d)",
+                    timer.now_mil / 1000, timer.now_mil % 1000, timer.fps_num,
+                    gfix.camera.coord.x, gfix.camera.coord.y,
+                    gfix.camera.scale.x, gfix.camera.scale.y,
+                    &key_line[0], key_narg_sign, key_narg
+                );
+            }
+        }
+    }
+    std::vector<ent_t> draw_list;
+    {
+        auto view = ecos.reg.view<com_layer_t>();
+        for (auto [ent, layer] : view.each()) { draw_list.push_back(ent); }
+        std::sort(draw_list.begin(), draw_list.end(), sort_by_layer);
+    }
+    {
+        for (auto ent : draw_list)
+        {
+            if (ecos.reg.all_of<com_coord_t, com_sizes_t, com_scale_t, com_color_t>(ent))
+            {
+                /* props */
+                auto coord = ecos.reg.get<com_coord_t>(ent);
+                auto sizes = ecos.reg.get<com_sizes_t>(ent);
+                auto scale = ecos.reg.get<com_scale_t>(ent);
+                auto color = ecos.reg.get<com_color_t>(ent);
+                /* image */
+                index_t image_index = _ZERO;
+                if (ecos.reg.any_of<com_image_t>(ent))
+                {
+                    image_index = ecos.reg.get<com_image_t>(ent).index;
+                }
+                if (image_index > 0) { glBindTexture(GL_TEXTURE_2D, image_index); }
+                /* screen or global ? */
+                if (ecos.reg.any_of<com_screen_from_t>(ent))
+                {
+                    auto from = ecos.reg.get<com_screen_from_t>(ent).from;
+                    /* text or quad ? */
+                    if (ecos.reg.any_of<com_string_t>(ent))
+                    {
+                        auto string = ecos.reg.get<com_string_t>(ent);
+                        auto text = text_t{ string, coord, sizes, scale, color };
+                        draw_screen_text(text, from);
+                    }
+                    else
+                    {
+                        auto quad = quad_t{ coord, sizes, scale, color };
+                        draw_screen_quad(quad, from);
+                    } /* text or quad */
+                }
+                else
+                {
+                    /* text or quad ? */
+                    if (ecos.reg.any_of<com_string_t>(ent))
+                    {
+                        auto string = ecos.reg.get<com_string_t>(ent);
+                        auto text = text_t{ string, coord, sizes, scale, color };
+                        draw_global_text(text);
+                    }
+                    else
+                    {
+                        auto quad = quad_t{ coord, sizes, scale, color };
+                        draw_global_quad(quad);
+                    } /* text or quad */
+                } /* screen or global */
+                if (image_index) { glBindTexture(GL_TEXTURE_2D, _ZERO); }
+            }
+        }
+    }
 }
 
 static void draw_quit()
@@ -177,16 +232,12 @@ void draw_loop()
     draw_quit();
 }
 
-void draw_global_quad(quad_t quad)
+void draw_global_quad(const quad_t&quad)
 {
-    auto xl = quad.coord.x - quad.sizes.w*quad.scale/2;
-    auto xr = quad.coord.x + quad.sizes.w*quad.scale/2;
-    auto yb = quad.coord.y - quad.sizes.h*quad.scale/2;
-    auto yt = quad.coord.y + quad.sizes.h*quad.scale/2;
-    if (quad.image_index > 0)
-    {
-        glBindTexture(GL_TEXTURE_2D, gfix.image_list[quad.image_index].index);
-    }
+    auto xl = quad.coord.x - quad.sizes.w * quad.scale.x / 2;
+    auto xr = quad.coord.x + quad.sizes.w * quad.scale.x / 2;
+    auto yb = quad.coord.y - quad.sizes.h * quad.scale.y / 2;
+    auto yt = quad.coord.y + quad.sizes.h * quad.scale.y / 2;
     glBegin(GL_QUADS);
     glColor3ubv(&quad.color.r);
     glTexCoord2i(0, 0);
@@ -198,13 +249,30 @@ void draw_global_quad(quad_t quad)
     glTexCoord2i(0, 1);
     glVertex2i(xl, yt);
     glEnd();
-    if (quad.image_index > 0)
-    {
-        glBindTexture(GL_TEXTURE_2D, 0);
-    }
 }
 
-void draw_screen_quad(quad_t quad, screen_from_e from)
+void draw_global_text(const text_t&text)
+{
+    glColor3ubv(&text.color.r);
+    auto font = GLUT_BITMAP_HELVETICA_12;
+    int xl = text.coord.x;
+    int yb = text.coord.y;
+    int xs = text.sizes.w * text.scale.x;
+    int ys = text.sizes.h * text.scale.y;
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+    glTranslatef(xl, yb, 0);
+    glScalef(0.005*xs, 0.005*ys, 1);
+    glLineWidth(text.scale.x);
+    for (auto iter = 0; iter < text.string.msize; iter++)
+    {
+        glutStrokeCharacter(GLUT_STROKE_MONO_ROMAN, text.string.mdata[iter]);
+    }
+    glPopMatrix();
+}
+
+void draw_screen_quad(const quad_t&quad, screen_from_e from)
 {
     int xl = quad.coord.x;
     int xr = quad.coord.x;
@@ -213,10 +281,10 @@ void draw_screen_quad(quad_t quad, screen_from_e from)
     switch (from)
     {
         case _SCREEN_FROM_C: {
-            xl -= quad.sizes.w*quad.scale/2;
-            xr += quad.sizes.w*quad.scale/2;
-            yb -= quad.sizes.h*quad.scale/2;
-            yt += quad.sizes.h*quad.scale/2;
+            xl -= quad.sizes.w * quad.scale.x / 2;
+            xr += quad.sizes.w * quad.scale.x / 2;
+            yb -= quad.sizes.h * quad.scale.y / 2;
+            yt += quad.sizes.h * quad.scale.y / 2;
         } break;
         case _SCREEN_FROM_L: {
         } break;
@@ -228,18 +296,18 @@ void draw_screen_quad(quad_t quad, screen_from_e from)
         } break;
         case _SCREEN_FROM_LB: {
             xl -= gfix.camera.sizes.w / 2;
-            xr += quad.sizes.w*quad.scale;
+            xr += quad.sizes.w * quad.scale.x;
             xr -= gfix.camera.sizes.w / 2;
             yb -= gfix.camera.sizes.h / 2;
-            yt += quad.sizes.h*quad.scale;
+            yt += quad.sizes.h * quad.scale.y;
             yt -= gfix.camera.sizes.h / 2;
         } break;
         case _SCREEN_FROM_RB: {
-            xl -= quad.sizes.w*quad.scale;
+            xl -= quad.sizes.w * quad.scale.x;
             xl += gfix.camera.sizes.w / 2;
             xr += gfix.camera.sizes.w / 2;
             yb -= gfix.camera.sizes.h / 2;
-            yt += quad.sizes.h*quad.scale;
+            yt += quad.sizes.h * quad.scale.y;
             yt -= gfix.camera.sizes.h / 2;
         } break;
         case _SCREEN_FROM_LT: {
@@ -247,18 +315,14 @@ void draw_screen_quad(quad_t quad, screen_from_e from)
         case _SCREEN_FROM_RT: {
         } break;
     }
-    xl *= gfix.camera.scale;
+    xl *= gfix.camera.scale.x;
     xl += gfix.camera.coord.x;
-    xr *= gfix.camera.scale;
+    xr *= gfix.camera.scale.x;
     xr += gfix.camera.coord.x;
-    yb *= gfix.camera.scale;
+    yb *= gfix.camera.scale.y;
     yb += gfix.camera.coord.y;
-    yt *= gfix.camera.scale;
+    yt *= gfix.camera.scale.y;
     yt += gfix.camera.coord.y;
-    if (quad.image_index > 0)
-    {
-        glBindTexture(GL_TEXTURE_2D, gfix.image_list[quad.image_index].index);
-    }
     glBegin(GL_QUADS);
     glColor3ubv(&quad.color.r);
     glTexCoord2i(0, 0);
@@ -270,26 +334,22 @@ void draw_screen_quad(quad_t quad, screen_from_e from)
     glTexCoord2i(0, 1);
     glVertex2i(xl, yt);
     glEnd();
-    if (quad.image_index > 0)
-    {
-        glBindTexture(GL_TEXTURE_2D, 0);
-    }
 }
 
-void draw_screen_text(text_t text, screen_from_e from)
+void draw_screen_text(const text_t&text, screen_from_e from)
 {
     glColor3ubv(&text.color.r);
     auto font = GLUT_BITMAP_HELVETICA_12;
     int xl = text.coord.x;
     int yb = text.coord.y;
-    int xs = text.sizes.w * text.scale;
-    int ys = text.sizes.h * text.scale;
+    int xs = text.sizes.w * text.scale.x;
+    int ys = text.sizes.h * text.scale.y;
     switch (from)
     {
         case _SCREEN_FROM_C: {
-            xl *= gfix.camera.scale;
-            xl -= glutBitmapLength(font, (unsigned char*)text.mdata)/2;
-            yb *= gfix.camera.scale;
+            xl *= gfix.camera.scale.x;
+            xl -= glutBitmapLength(font, (unsigned char*)text.string.mdata)/2;
+            yb *= gfix.camera.scale.y;
         } break;
         case _SCREEN_FROM_L: {
         } break;
@@ -301,9 +361,9 @@ void draw_screen_text(text_t text, screen_from_e from)
         } break;
         case _SCREEN_FROM_LB: {
             xl -= gfix.camera.sizes.w/2;
-            xl *= gfix.camera.scale;
+            xl *= gfix.camera.scale.x;
             yb -= gfix.camera.sizes.h/2;
-            yb *= gfix.camera.scale;
+            yb *= gfix.camera.scale.y;
         } break;
         case _SCREEN_FROM_RB: {
         } break;
@@ -314,36 +374,36 @@ void draw_screen_text(text_t text, screen_from_e from)
     }
     xl += gfix.camera.coord.x;
     yb += gfix.camera.coord.y;
-    xs *= gfix.camera.scale;
-    ys *= gfix.camera.scale;
+    xs *= gfix.camera.scale.x;
+    ys *= gfix.camera.scale.y;
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
     glLoadIdentity();
     glTranslatef(xl, yb, 0);
     glScalef(0.005*xs, 0.005*ys, 1);
-    glLineWidth(text.scale);
-    for (auto iter = 0; iter < text.msize; iter++)
+    glLineWidth(text.scale.x);
+    for (auto iter = 0; iter < text.string.msize; iter++)
     {
-        glutStrokeCharacter(GLUT_STROKE_MONO_ROMAN, text.mdata[iter]);
+        glutStrokeCharacter(GLUT_STROKE_MONO_ROMAN, text.string.mdata[iter]);
     }
     glPopMatrix();
 }
 
 /*** files ***/
 
-void load_image(std::string path, image_t*image)
+void load_image(const std::string&path, image_t*image)
 {
-    image->mdata = stbi_load(&path[0], &image->sizes.w, &image->sizes.h, &image->nchan, 0);
-    if (image->mdata)
+    image->pixel_data.mdata = stbi_load(&path[0], &image->sizes.w, &image->sizes.h, &image->pixel_size.value, 0);
+    if (image->pixel_data.mdata)
     {
-        image->msize = image->sizes.w * image->sizes.h * image->nchan;
+        image->pixel_data.msize = image->sizes.w * image->sizes.h * image->pixel_size.value;
         glGenTextures(1, &image->index);
         glBindTexture(GL_TEXTURE_2D, image->index);
         glTexImage2D(
             GL_TEXTURE_2D, 0,
-            image->nchan, image->sizes.w, image->sizes.h, 0,
-            image->nchan == 4 ? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE,
-            image->mdata
+            image->pixel_size.value, image->sizes.w, image->sizes.h, 0,
+            image->pixel_size.value == 4 ? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE,
+            image->pixel_data.mdata
         );
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -351,8 +411,8 @@ void load_image(std::string path, image_t*image)
         std::clog << "--[[load_image]]--" << std::endl;
         std::clog << "[path]=" << path << std::endl;
         std::clog << "[sizes]=" << image->sizes.h << "x" << image->sizes.h << std::endl;
-        std::clog << "[nchan]=" << image->nchan << std::endl;
-        std::clog << "[msize]=" << image->msize << std::endl;
+        std::clog << "[nchan]=" << image->pixel_size.value << std::endl;
+        std::clog << "[msize]=" << image->pixel_data.msize << std::endl;
         std::clog << "[index]=" << image->index << std::endl;
     }
     else
@@ -361,7 +421,7 @@ void load_image(std::string path, image_t*image)
     }
 }
 
-void load_image_index(std::string path, size_t index)
+void load_image_index(const std::string&path, size_t index)
 {
     if (gfix.image_list.size() <= index)
     {
@@ -372,29 +432,38 @@ void load_image_index(std::string path, size_t index)
 
 /*** view ***/
 
-void view_goto(int stepx, int stepy)
+void view_goto(const com_coord_t&coord)
 {
-    gfix.camera.coord.x = stepx;
-    gfix.camera.coord.y = stepy;
+    gfix.camera.coord.x = coord.x;
+    gfix.camera.coord.y = coord.y;
 }
 
-void view_move(int stepx, int stepy)
+void view_move(const com_coord_t&coord)
 {
-    gfix.camera.coord.x += stepx * (1 << 4 << gfix.camera.scale);
-    gfix.camera.coord.y += stepy * (1 << 4 << gfix.camera.scale);
+    gfix.camera.coord.x += coord.x * (1 << 4 << gfix.camera.scale.x);
+    gfix.camera.coord.y += coord.y * (1 << 4 << gfix.camera.scale.y);
 }
 
-void view_scale(int scale)
+void view_zoom(const com_scale_t&scale)
 {
-    if (scale < 0)
+    if (scale.x < 0)
     {
-        gfix.camera.scale >>= (-scale);
+        gfix.camera.scale.x >>= (-scale.x);
     }
     else
     {
-        gfix.camera.scale <<= (+scale);
+        gfix.camera.scale.x <<= (+scale.x);
     }
-    gfix.camera.scale = std::clamp(gfix.camera.scale, 1, 2 << 16);
+    gfix.camera.scale.x = std::clamp(gfix.camera.scale.x, 1, 2 << 16);
+    if (scale.y < 0)
+    {
+        gfix.camera.scale.y >>= (-scale.y);
+    }
+    else
+    {
+        gfix.camera.scale.y <<= (+scale.y);
+    }
+    gfix.camera.scale.y = std::clamp(gfix.camera.scale.y, 1, 2 << 16);
 }
 
 _NAMESPACE_LEAVE

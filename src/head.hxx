@@ -6,6 +6,7 @@
 #include <iostream>
 
 #include <algorithm>
+#include <array>
 #include <vector>
 
 #include <string>
@@ -13,6 +14,8 @@
 
 #include <cmath>
 #include <cstdint>
+
+#include "../lib/entt/entt.hpp"
 
 /* defines */
 
@@ -57,5 +60,10 @@
 /* content */
 
 _NAMESPACE_ENTER
+
+/** typedef **/
+
+typedef unsigned long int index_t;
+typedef unsigned int count_t;
 
 _NAMESPACE_LEAVE

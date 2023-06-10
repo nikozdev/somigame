@@ -1,7 +1,7 @@
 # basic
 
 NAME?=somigame
-VNUM?=0xa0a1a2
+VNUM?=0xa0a1a3
 TYPE?=RUN
 
 # files
@@ -58,6 +58,12 @@ MANFTL:=$(patsubst $(MANFSD)/%,$(MANFTD)/%,$(MANFSL))
 
 # build
 
+## libraries
+
+LIBDIR:=$(FSDLOC)/lib
+LIBSET:=$(patsubst $(LIBDIR)/%,%,$(wildcard $(LIBDIR)/*))
+LIBUSE:=$(subst entt,,$(LIBSET))
+
 ## compiler
 
 CMAKER?= $(shell which g++) -c -o
@@ -68,16 +74,12 @@ CFLAGS+= -D_NAME=$(NAME) -D_NAME_STR=\"$(NAME)\"
 CFLAGS+= -D_VNUM=$(VNUM) -D_VNUM_STR=\"$(VNUM)\"
 CFLAGS+= -D_TYPE_$(TYPE) -D_TYPE_STR=\"$(TYPE)\"
 CFLAGS+= $(shell pkg-config --cflags opengl gl glu glut)
+CFLAGS+= -I $(patsubst $(LIBDIR)/%,$(LIBDIR)/%/src,$(LIBSET))
 
 ## linker
 
 LMAKER?= $(shell which g++) -o
 LFLAGS+= $(shell pkg-config --libs opengl gl glu glut)
-
-## libraries
-
-LIBDIR:=$(FSDLOC)/lib
-LIBSET:=$(patsubst $(LIBDIR)/%,%,$(wildcard $(LIBDIR)/*))
 
 # terminal
 
@@ -97,50 +99,50 @@ TERMDB:= $(shell which gdb)
 build: build-head $(OBJFSL) $(BINFSL)
 build-head:
 	$(info "[[build]]")
-	@for lib in ${LIBSET}; do ${MAKE} -C $(LIBDIR)/$$lib build; done
+	@for lib in ${LIBUSE}; do ${MAKE} -C $(LIBDIR)/$$lib build; done
 
 clean: clean-head
 	$(TERMRM) $(OBJFSL) $(BINFSL)
 clean-head:
 	$(info "[[clean]]")
-	@for lib in ${LIBSET}; do ${MAKE} -C $(LIBDIR)/$$lib clean; done
+	@for lib in ${LIBUSE}; do ${MAKE} -C $(LIBDIR)/$$lib clean; done
 
 ## external
 
 setup: setup-head $(BINFTL) $(MANFTL)
 setup-head:
 	$(info "[[setup]]")
-	@for lib in ${LIBSET}; do ${MAKE} -C $(LIBDIR)/$$lib setup; done
+	@for lib in ${LIBUSE}; do ${MAKE} -C $(LIBDIR)/$$lib setup; done
 
 reset: reset-head
 	$(TERMRM) $(BINFTL) $(MANFTL)
 reset-head:
 	$(info "[[reset]]")
-	@for lib in ${LIBSET}; do ${MAKE} -C $(LIBDIR)/$$lib reset; done
+	@for lib in ${LIBUSE}; do ${MAKE} -C $(LIBDIR)/$$lib reset; done
 
 ## addition
 
 again: again-head clean build
 again-head:
 	$(info "[[again]]")
-	@for lib in ${LIBSET}; do ${MAKE} -C $(LIBDIR)/$$lib again; done
+	@for lib in ${LIBUSE}; do ${MAKE} -C $(LIBDIR)/$$lib again; done
 
 start: start-head build
 	@for bin in ${BINFSL}; do $$bin; done
 start-head:
 	$(info "[[start]]")
-	@for lib in ${LIBSET}; do ${MAKE} -C $(LIBDIR)/$$lib start; done
+	@for lib in ${LIBUSE}; do ${MAKE} -C $(LIBDIR)/$$lib start; done
 
 rerun: rerun-head again start
 rerun-head:
 	$(info "[[rerun]]")
-	@for lib in ${LIBSET}; do ${MAKE} -C $(LIBDIR)/$$lib rerun; done
+	@for lib in ${LIBUSE}; do ${MAKE} -C $(LIBDIR)/$$lib rerun; done
 
 debug: debug-head again
 	@for bin in ${BINFSL}; do $(TERMDB) $$bin; done
 debug-head:
 	$(info "[[debug]]")
-	@for lib in ${LIBSET}; do ${MAKE} -C $(LIBDIR)/$$lib debug; done
+	@for lib in ${LIBUSE}; do ${MAKE} -C $(LIBDIR)/$$lib debug; done
 
 print: print-head
 	$(info [=[basic]=])
@@ -198,6 +200,7 @@ print: print-head
 	$(info [=[libraries]=])
 	$(info [LIBDIR]=$(LIBDIR))
 	$(info [LIBSET]=$(LIBSET))
+	$(info [LIBUSE]=$(LIBUSE))
 	$(info [=[rules]=])
 	$(info [build]=link binary file from object code compiled from source code)
 	$(info [clean]=remove compiled object code and linked binary file)
@@ -210,7 +213,7 @@ print: print-head
 	$(info [print]=write this whole text)
 print-head:
 	$(info [[print]])
-	@for lib in ${LIBSET}; do ${MAKE} -C $(LIBDIR)/$$lib print; done
+	@for lib in ${LIBUSE}; do ${MAKE} -C $(LIBDIR)/$$lib print; done
 
 ## source
 

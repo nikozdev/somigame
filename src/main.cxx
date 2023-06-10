@@ -5,6 +5,7 @@
 #include "fsix.hxx"
 #include "oput.hxx"
 #include "iput.hxx"
+#include "ecos.hxx"
 
 /* content */
 
@@ -27,6 +28,8 @@ int main(int argc, char** argv)
     glutCreateWindow(_NAME_STR);
     /* graphics */
     gfix_init();
+    /* entity component system */
+    ecos_init();
     /* keyboard */
     key_board_init();
     glutSetKeyRepeat(GLUT_KEY_REPEAT_ON);
