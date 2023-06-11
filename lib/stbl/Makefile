@@ -1,7 +1,7 @@
 # basic
 
-NAME:=somigame
-VNUM:=0xa0a1a4
+NAME:=stbl
+VNUM:=0xa0a0a0
 TYPE:=RUN
 
 # files
@@ -59,7 +59,7 @@ MANFTD:=$(FTDLOC)/share/man/man1
 
 ### lists
 
-BINFTL:=$(patsubst $(BINFSD)/%.*,$(BINFTD)/%,$(BINFSL))
+BINFTL:=$(patsubst $(BINFSD)/%.$(BINSUF),$(BINFTD)/%,$(BINFSL))
 MANFTL:=$(patsubst $(MANFSD)/%,$(MANFTD)/%,$(MANFSL))
 
 # build
@@ -68,9 +68,6 @@ MANFTL:=$(patsubst $(MANFSD)/%,$(MANFTD)/%,$(MANFSL))
 
 LIBDIR:=$(FSDLOC)/lib
 LIBSET:=$(patsubst $(LIBDIR)/%,%,$(wildcard $(LIBDIR)/*))
-LIBUSE:=$(subst entt ,,$(LIBSET))
-LIBLIN:=$(patsubst %,$(LIBDIR)/%/bin/*.$(BINSUF_LIB),$(LIBUSE))
-LIBLIN:=$(wildcard $(LIBLIN))
 
 ## compiler
 
@@ -78,12 +75,10 @@ CMAKER:= $(shell which g++) -c -o
 CFLAGS+= -std=c++20
 CFLAGS+= -O0 -g
 CFLAGS+= -Wno-initializer-overrides
-CFLAGS+= -Wno-error=narrowing -Wno-narrowing
 CFLAGS+= -D_NAME=$(NAME) -D_NAME_STR=\"$(NAME)\"
 CFLAGS+= -D_VNUM=$(VNUM) -D_VNUM_STR=\"$(VNUM)\"
 CFLAGS+= -D_TYPE_$(TYPE) -D_TYPE_STR=\"$(TYPE)\"
-CFLAGS+= $(shell pkg-config --cflags opengl gl glu glut)
-CFLAGS+= $(patsubst %,-I$(LIBDIR)/%/src,$(LIBUSE))
+CFLAGS+= $(patsubst $(LIBDIR)/%,-I$(LIBDIR)/%/src,$(LIBSET))
 
 ## linker
 
@@ -92,7 +87,6 @@ ifeq ($(TYPE),LIB)
 else
 	LMAKER:= $(shell which g++) -o
 endif
-LFLAGS+= $(shell pkg-config --libs opengl gl glu glut)
 LFLAGS+= $(patsubst %,-L$(LIBDIR)/%/bin,$(LIBUSE))
 LFLAGS+= $(patsubst %,-l:%.$(BINSUF_LIB),$(LIBUSE))
 
@@ -111,7 +105,7 @@ TERMDB:= $(shell which gdb)
 
 ## internal
 
-build: build-head $(OBJFSL) $(BINFSL) $(LIBLIN)
+build: build-head $(OBJFSL) $(BINFSL)
 build-head:
 	@for lib in ${LIBUSE}; do ${MAKE} -C $(LIBDIR)/$$lib TYPE=LIB build; done
 	$(info "[[build]]")
@@ -225,7 +219,6 @@ print: print-head
 	$(info [LIBDIR]=$(LIBDIR))
 	$(info [LIBSET]=$(LIBSET))
 	$(info [LIBUSE]=$(LIBUSE))
-	$(info [LIBLIN]=$(LIBLIN))
 	$(info [=[rules]=])
 	$(info [build]=link binary file from object code compiled from source code)
 	$(info [clean]=remove compiled object code and linked binary file)

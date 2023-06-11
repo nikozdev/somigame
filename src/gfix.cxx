@@ -4,8 +4,7 @@
 #include "main.hxx"
 #include "iput.hxx"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb/stb_image.h>
+#include "../lib/stbl/src/stbi.hxx"
 
 /* content */
 
