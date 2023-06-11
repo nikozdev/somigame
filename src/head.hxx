@@ -6,6 +6,8 @@
 #include <iostream>
 
 #include <algorithm>
+#include <functional>
+
 #include <array>
 #include <vector>
 
@@ -65,5 +67,7 @@ _NAMESPACE_ENTER
 
 typedef unsigned long int index_t;
 typedef unsigned int count_t;
+
+typedef bool bool_t;
 
 _NAMESPACE_LEAVE

@@ -19,12 +19,12 @@ typedef enum screen_from_e {
     _SCREEN_FROM_LB, _SCREEN_FROM_RB, _SCREEN_FROM_LT, _SCREEN_FROM_RT,
 } screen_from_e;
 
-typedef enum layer_e {
-    _LAYER_BG = 0x0'000,
-    _LAYER_MG = 0x1'000,
-    _LAYER_FG = 0x2'000,
-    _LAYER_UI = 0x3'000,
-} layer_e;
+typedef enum layerid_e {
+    _LAYERID_BG = 0x0'000,
+    _LAYERID_MG = 0x1'000,
+    _LAYERID_FG = 0x2'000,
+    _LAYERID_UI = 0x3'000,
+} layerid_e;
 
 /** typedef **/
 
@@ -34,9 +34,10 @@ typedef struct com_screen_from_t {
     screen_from_e from = _SCREEN_FROM_C;
 } com_screen_from_t;
 
-typedef struct com_layer_t {
-    index_t index;
-} com_layer_t;
+typedef struct com_visual_t {
+    layerid_e   layerid = _LAYERID_BG;
+    bool_t      visible = _TRUTH;
+} com_visual_t;
 
 typedef struct com_color_t {
     unsigned char r = _ZERO, g = _ZERO, b = _ZERO;

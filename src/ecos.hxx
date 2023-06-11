@@ -18,6 +18,13 @@ typedef entt::entity ent_t;
 
 /*** component ***/
 
+typedef struct com_family_t {
+    ent_t ancestor = entt::null;
+    ent_t children = entt::null;
+    ent_t siblingl = entt::null;
+    ent_t siblingr = entt::null;
+} com_family_t;
+
 typedef struct com_iname_t {
     index_t index;
 } com_index_t;
@@ -90,5 +97,27 @@ inline bool ecos_com_delete(ent_t& ent)
     ecos.reg.remove<com_t_t>(ent);
     return true;
 }
+
+/*** family ***/
+
+extern ent_t ecos_get_ancestor(ent_t ent);
+extern bool ecos_vet_ancestry(ent_t ent, ent_t ancestry);
+extern bool ecos_vet_ancestor(ent_t ent, ent_t ancestor = entt::null);
+extern bool ecos_set_ancestor(ent_t ent, ent_t ancestor = entt::null);
+
+extern ent_t ecos_get_siblingl(ent_t ent);
+extern ent_t ecos_get_siblingr(ent_t ent);
+extern bool ecos_vet_siblings(ent_t ent, ent_t siblings);
+extern bool ecos_vet_siblings(ent_t ent, ent_t siblingl, ent_t siblingr);
+extern bool ecos_vet_siblingl(ent_t ent, ent_t siblingl = entt::null);
+extern bool ecos_vet_siblingr(ent_t ent, ent_t siblingr = entt::null);
+extern bool ecos_set_siblingl(ent_t ent, ent_t siblingl = entt::null);
+extern bool ecos_set_siblingr(ent_t ent, ent_t siblingr = entt::null);
+extern bool ecos_set_siblings(ent_t ent, ent_t siblingl = entt::null, ent_t siblingr = entt::null);
+
+extern bool ecos_vet_children(ent_t ent, ent_t children = entt::null);
+extern bool ecos_set_children(ent_t ent, ent_t children = entt::null);
+extern bool ecos_insert_child(ent_t ent, ent_t child);
+extern bool ecos_remove_child(ent_t ent, ent_t child);
 
 _NAMESPACE_LEAVE

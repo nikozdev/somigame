@@ -3,6 +3,7 @@
 #include "gfix.hxx"
 #include "main.hxx"
 #include "iput.hxx"
+#include "util.hxx"
 
 #include "../lib/stbl/src/stbi.hxx"
 
@@ -16,14 +17,37 @@ gfix_t gfix;
 
 /*** meta ***/
 
-struct sort_by_layer_t {
-    bool operator() (const ent_t& lent, const ent_t& rent)
+struct sort_by_layerid_t {
+    bool operator() (const ent_t& ent_l, const ent_t& ent_r)
     {
-        auto lent_layer = ecos.reg.get<com_layer_t>(lent);
-        auto rent_layer = ecos.reg.get<com_layer_t>(rent);
-        return lent_layer.index < rent_layer.index;
+        auto&reg = ecos.reg;
+        auto*vision_l =&reg.get<com_visual_t>(ent_l);
+        index_t layerid_l = vision_l->layerid;
+        {
+            auto ancestor = ent_l;
+            auto*family_a =&reg.get<com_family_t>(ancestor);
+            while (reg.valid(family_a->ancestor))
+            {
+                ancestor = family_a->ancestor;
+                family_a =&reg.get<com_family_t>(ancestor);
+                layerid_l += reg.get<com_visual_t>(ancestor).layerid;
+            }
+        }
+        auto*vision_r =&reg.get<com_visual_t>(ent_r);
+        index_t layerid_r = vision_r->layerid;
+        {
+            auto ancestor = ent_r;
+            auto*family_a =&reg.get<com_family_t>(ancestor);
+            while (reg.valid(family_a->ancestor))
+            {
+                ancestor = family_a->ancestor;
+                family_a =&reg.get<com_family_t>(ancestor);
+                layerid_r += reg.get<com_visual_t>(ancestor).layerid;
+            }
+        }
+        return layerid_l < layerid_r;
     }
-} sort_by_layer;
+} sort_by_layerid;
 
 /** actions **/
 
@@ -45,7 +69,7 @@ void gfix_init()
     glEnable(GL_LINE_SMOOTH);
     glShadeModel(GL_SMOOTH);
     /* images */
-    stbi_set_flip_vertically_on_load(true);
+    stbi_set_flip_vertically_on_load(_TRUTH);
     load_image_index("rsc/gfix/meta-logo.png", 1);
     load_image_index("rsc/gfix/entt-main-ff-ai-f1.png", 2);
     /* keybinds */
@@ -60,6 +84,41 @@ void gfix_init()
     key_bind_set("vw", [](int narg){ view_move({ .x = 0, .y = (+1) * (1+narg) }); });
     /*** zoom ***/
     key_bind_set("vz", [](int narg){ view_zoom({ .x = narg, .y = narg }); });
+    /** diagnostics **/
+    key_bind_set("dt", [](int narg){
+        auto&reg = ecos.reg;
+        auto view = reg.view<com_sname_t>();
+        for (auto [ent, sname] : view.each())
+        {
+            if (sname.title == "gui-status-quad")
+            {
+                auto&visual = reg.get<com_visual_t>(ent);
+                visual.visible = !visual.visible;
+            }
+        }
+    });
+    key_bind_set("dw", [](int narg){
+        auto&reg = ecos.reg;
+        auto view = reg.view<com_sname_t>();
+        for (auto [ent, sname] : view.each())
+        {
+            if (sname.title == "gui-status-quad")
+            {
+                reg.get<com_coord_t>(ent).y += gfix.camera.sizes.h / 10;
+            }
+        }
+    });
+    key_bind_set("ds", [](int narg){
+        auto&reg = ecos.reg;
+        auto view = reg.view<com_sname_t>();
+        for (auto [ent, sname] : view.each())
+        {
+            if (sname.title == "gui-status-quad")
+            {
+                reg.get<com_coord_t>(ent).y -= gfix.camera.sizes.h / 10;
+            }
+        }
+    });
     /** graphics **/
     /*** mode ***/
     /**** wire ****/
@@ -67,47 +126,87 @@ void gfix_init()
     /**** fill ****/
     key_bind_set("gmf", [](int narg){ glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); });
     /* entity component system */
+    auto&reg = ecos.reg;
     { /* main entity */
-        ent_t ent = ecos.reg.create();
-        ecos.reg.emplace<com_sname_t>(ent, "entt-main");
-        ecos.reg.emplace<com_layer_t>(ent, _LAYER_MG + 0);
-        ecos.reg.emplace<com_coord_t>(ent, 0, 0);
-        ecos.reg.emplace<com_sizes_t>(ent, 256, 256);
-        ecos.reg.emplace<com_scale_t>(ent, 1, 1);
-        ecos.reg.emplace<com_color_t>(ent, 255, 255, 255);
-        ecos.reg.emplace<com_image_t>(ent, 2);
+        ent_t ent = reg.create();
+        reg.emplace<com_family_t>(ent);
+        reg.emplace<com_sname_t>(ent, "entt-main");
+        reg.emplace<com_visual_t>(ent, _LAYERID_MG + 0, _TRUTH);
+        reg.emplace<com_coord_t>(ent, 0, 0);
+        reg.emplace<com_sizes_t>(ent, 256, 256);
+        reg.emplace<com_scale_t>(ent, 1, 1);
+        reg.emplace<com_color_t>(ent, 255, 255, 255);
+        reg.emplace<com_image_t>(ent, 2);
     }
-    { /* gui-status-quad */
-        ent_t ent = ecos.reg.create();
-        ecos.reg.emplace<com_sname_t>(ent, "gui-status-quad");
-        ecos.reg.emplace<com_layer_t>(ent, _LAYER_UI + 0);
-        ecos.reg.emplace<com_coord_t>(ent, 0, 0);
-        ecos.reg.emplace<com_sizes_t>(ent, gfix.camera.sizes.w, 32);
-        ecos.reg.emplace<com_scale_t>(ent, 1, 1);
-        ecos.reg.emplace<com_color_t>(ent, 64, 64, 64);
-        ecos.reg.emplace<com_screen_from_t>(ent, _SCREEN_FROM_LB);
-    }
-    { /* gui-status-text */
-        auto ent = ecos.reg.create();
-        ecos.reg.emplace<com_sname_t>(ent, "gui-status-text");
-        ecos.reg.emplace<com_layer_t>(ent, _LAYER_UI + 1);
-        ecos.reg.emplace<com_string_t>(ent, new char[256], 256);
-        ecos.reg.emplace<com_coord_t>(ent, 12, 12);
-        ecos.reg.emplace<com_sizes_t>(ent, 16, 16);
-        ecos.reg.emplace<com_scale_t>(ent, 1, 1);
-        ecos.reg.emplace<com_color_t>(ent, 240, 240, 240);
-        ecos.reg.emplace<com_screen_from_t>(ent, _SCREEN_FROM_LB);
-    }
-    { /* logo */
-        ent_t ent = ecos.reg.create();
-        ecos.reg.emplace<com_sname_t>(ent, "gui-status-logo");
-        ecos.reg.emplace<com_layer_t>(ent, _LAYER_UI + 2);
-        ecos.reg.emplace<com_coord_t>(ent, 0, 0);
-        ecos.reg.emplace<com_sizes_t>(ent, 32, 32);
-        ecos.reg.emplace<com_scale_t>(ent, 1, 1);
-        ecos.reg.emplace<com_color_t>(ent, 255, 255, 255);
-        ecos.reg.emplace<com_image_t>(ent, 1);
-        ecos.reg.emplace<com_screen_from_t>(ent, _SCREEN_FROM_RB);
+    { /* gui-status */
+        ent_t ent_quad = reg.create();
+        reg.emplace<com_family_t>(ent_quad);
+        reg.emplace<com_sname_t>(ent_quad, "gui-status-quad");
+        reg.emplace<com_visual_t>(ent_quad, _LAYERID_UI + 0, _TRUTH);
+        reg.emplace<com_coord_t>(ent_quad, 0, 0);
+        reg.emplace<com_sizes_t>(ent_quad, gfix.camera.sizes.w, 32);
+        reg.emplace<com_scale_t>(ent_quad, 1, 1);
+        reg.emplace<com_color_t>(ent_quad, 64, 64, 64);
+        reg.emplace<com_screen_from_t>(ent_quad, _SCREEN_FROM_LB);
+        auto ent_text = reg.create();
+        reg.emplace<com_family_t>(ent_text, ent_quad);
+        reg.emplace<com_sname_t>(ent_text, "gui-status-text");
+        reg.emplace<com_visual_t>(ent_text, _LAYERID_BG + 1, _TRUTH);
+        reg.emplace<com_coord_t>(ent_text, 12, 12);
+        reg.emplace<com_sizes_t>(ent_text, 16, 16);
+        reg.emplace<com_scale_t>(ent_text, 1, 1);
+        reg.emplace<com_color_t>(ent_text, 240, 240, 240);
+        reg.emplace<com_string_t>(ent_text, new char[256], 256);
+        reg.emplace<com_screen_from_t>(ent_text, _SCREEN_FROM_LB);
+        ent_t ent_logo = reg.create();
+        reg.emplace<com_family_t>(ent_logo, ent_quad);
+        reg.emplace<com_sname_t>(ent_logo, "gui-status-logo");
+        reg.emplace<com_visual_t>(ent_logo, _LAYERID_BG + 2);
+        reg.emplace<com_coord_t>(ent_logo, 0, 0);
+        reg.emplace<com_sizes_t>(ent_logo, 32, 32);
+        reg.emplace<com_scale_t>(ent_logo, 1, 1);
+        reg.emplace<com_color_t>(ent_logo, 255, 255, 255);
+        reg.emplace<com_image_t>(ent_logo, 1);
+        reg.emplace<com_screen_from_t>(ent_logo, _SCREEN_FROM_RB);
+        ecos_set_ancestor(ent_logo);
+        ent_t ent_test1 = reg.create();
+        reg.emplace<com_family_t>(ent_test1, ent_quad);
+        ecos_set_ancestor(ent_logo, ent_quad);
+        {
+            auto&family = reg.get<com_family_t>(ent_text);
+            printf("ent_text:%+i:%+i;%+i;%+i;%+i;%c",
+                ent_text,
+                family.ancestor,
+                family.children,
+                family.siblingl,
+                family.siblingr,
+                '\n'
+            );
+        }
+        {
+            auto&family = reg.get<com_family_t>(ent_logo);
+            printf("ent_logo:%+i:%+i;%+i;%+i;%+i;%c",
+                ent_logo,
+                family.ancestor,
+                family.children,
+                family.siblingl,
+                family.siblingr,
+                '\n'
+            );
+        }
+        {
+            auto&family = reg.get<com_family_t>(ent_test1);
+            printf("ent_test:%+i:%+i;%+i;%+i;%+i;%c",
+                ent_test1,
+                family.ancestor,
+                family.children,
+                family.siblingl,
+                family.siblingr,
+                '\n'
+            );
+        }
+        ent_t ent_test2 = reg.create();
+        reg.emplace<com_family_t>(ent_test2, ent_test1);
     }
 }
 
@@ -134,23 +233,23 @@ static void draw_init()
 static void draw_proc()
 {
     /* entity component system */
+    auto&reg = ecos.reg;
     { /* change unique ones */
-        auto view = ecos.reg.view<com_sname_t>();
-        for (auto [ent, sname] : view.each())
+        for (auto [ent, sname] : reg.view<com_sname_t>().each())
         {
             if (sname.title == "gui-status-quad")
             {
-                auto&sizes = ecos.reg.get<com_sizes_t>(ent);
+                auto&sizes = reg.get<com_sizes_t>(ent);
                 sizes.w = gfix.camera.sizes.w;
             }
             else if (sname.title == "gui-status-text")
             {
-                auto&string = ecos.reg.get<com_string_t>(ent);
+                auto&string = reg.get<com_string_t>(ent);
                 memset(string.mdata, '\0', 256);
                 std::sprintf(
                     string.mdata,
                     "[ now=%03zu.%03zu; fps=%05zu; pos=%ix%i; scale=%ix%i; ] %s(%+dx%d)",
-                    timer.now_mil / 1000, timer.now_mil % 1000, timer.fps_num,
+                    util.timer.now_mil / 1000, util.timer.now_mil % 1000, util.timer.fps_num,
                     gfix.camera.coord.x, gfix.camera.coord.y,
                     gfix.camera.scale.x, gfix.camera.scale.y,
                     &key_line[0], key_narg_sign, key_narg
@@ -158,37 +257,63 @@ static void draw_proc()
             }
         }
     }
-    std::vector<ent_t> draw_list;
+    std::vector<ent_t> draw_list_ent;
     {
-        auto view = ecos.reg.view<com_layer_t>();
-        for (auto [ent, layer] : view.each()) { draw_list.push_back(ent); }
-        std::sort(draw_list.begin(), draw_list.end(), sort_by_layer);
+        for (auto [ent, family, visual] : reg.view<com_family_t, com_visual_t>().each())
+        {
+            auto ancestor = ent;
+            auto*family_a = &family;
+            bool visible = visual.visible;
+            while (reg.valid(family_a->ancestor))
+            {
+                ancestor = family_a->ancestor;
+                family_a = &reg.get<com_family_t>(ancestor);
+                visible = visible && reg.get<com_visual_t>(ancestor).visible;
+            }
+            if (visible) { draw_list_ent.push_back(ent); }
+        }
+        std::sort(draw_list_ent.begin(), draw_list_ent.end(), sort_by_layerid);
     }
     {
-        for (auto ent : draw_list)
+        for (auto ent : draw_list_ent)
         {
-            if (ecos.reg.all_of<com_coord_t, com_sizes_t, com_scale_t, com_color_t>(ent))
+            if (reg.all_of<com_family_t, com_coord_t, com_sizes_t, com_scale_t, com_color_t>(ent))
             {
                 /* props */
-                auto coord = ecos.reg.get<com_coord_t>(ent);
-                auto sizes = ecos.reg.get<com_sizes_t>(ent);
-                auto scale = ecos.reg.get<com_scale_t>(ent);
-                auto color = ecos.reg.get<com_color_t>(ent);
+                auto*family = &reg.get<com_family_t>(ent);
+                auto coord = reg.get<com_coord_t>(ent);
+                auto sizes = reg.get<com_sizes_t>(ent);
+                auto scale = reg.get<com_scale_t>(ent);
+                auto color = reg.get<com_color_t>(ent);
+                /* hierarchy */
+                auto ancestor = ent;
+                auto*family_a = family;
+                while (reg.valid(family_a->ancestor))
+                {
+                    ancestor = family_a->ancestor;
+                    family_a = &reg.get<com_family_t>(ancestor);
+                    auto&coord_a = reg.get<com_coord_t>(ancestor);
+                    coord.x += coord_a.x;
+                    coord.y += coord_a.y;
+                    auto&scale_a = reg.get<com_scale_t>(ancestor);
+                    scale.x *= scale_a.x;
+                    scale.y *= scale_a.y;
+                }
                 /* image */
                 index_t image_index = _ZERO;
-                if (ecos.reg.any_of<com_image_t>(ent))
+                if (reg.any_of<com_image_t>(ent))
                 {
-                    image_index = ecos.reg.get<com_image_t>(ent).index;
+                    image_index = reg.get<com_image_t>(ent).index;
                 }
                 if (image_index > 0) { glBindTexture(GL_TEXTURE_2D, image_index); }
                 /* screen or global ? */
-                if (ecos.reg.any_of<com_screen_from_t>(ent))
+                if (reg.any_of<com_screen_from_t>(ent))
                 {
-                    auto from = ecos.reg.get<com_screen_from_t>(ent).from;
+                    auto from = reg.get<com_screen_from_t>(ent).from;
                     /* text or quad ? */
-                    if (ecos.reg.any_of<com_string_t>(ent))
+                    if (reg.any_of<com_string_t>(ent))
                     {
-                        auto string = ecos.reg.get<com_string_t>(ent);
+                        auto string = reg.get<com_string_t>(ent);
                         auto text = text_t{ string, coord, sizes, scale, color };
                         draw_screen_text(text, from);
                     }
@@ -201,9 +326,9 @@ static void draw_proc()
                 else
                 {
                     /* text or quad ? */
-                    if (ecos.reg.any_of<com_string_t>(ent))
+                    if (reg.any_of<com_string_t>(ent))
                     {
-                        auto string = ecos.reg.get<com_string_t>(ent);
+                        auto string = reg.get<com_string_t>(ent);
                         auto text = text_t{ string, coord, sizes, scale, color };
                         draw_global_text(text);
                     }

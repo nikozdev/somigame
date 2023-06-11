@@ -1,6 +1,7 @@
 /* headers*/
 
 #include "main.hxx"
+#include "util.hxx"
 #include "gfix.hxx"
 #include "fsix.hxx"
 #include "oput.hxx"
@@ -13,8 +14,6 @@ _NAMESPACE_ENTER
 
 /** datadef **/
 
-timer_t timer;
-
 /** actions **/
 
 int main(int argc, char** argv)
@@ -26,10 +25,10 @@ int main(int argc, char** argv)
     glutInitWindowPosition(gfix.window.coord.x, gfix.window.coord.y);
     glutInitWindowSize(gfix.window.sizes.w, gfix.window.sizes.h);
     glutCreateWindow(_NAME_STR);
-    /* graphics */
-    gfix_init();
     /* entity component system */
     ecos_init();
+    /* graphics */
+    gfix_init();
     /* keyboard */
     key_board_init();
     glutSetKeyRepeat(GLUT_KEY_REPEAT_ON);
@@ -49,21 +48,8 @@ int main(int argc, char** argv)
     });
     /* work */
     glutIdleFunc([](){
-        /* time */
-        timer.was_mil = timer.now_mil;
-        auto was_sec = timer.was_mil/1000;
-        timer.now_mil = glutGet(GLUT_ELAPSED_TIME)%(1000*1000);
-        auto now_sec = timer.now_mil/1000;
-        timer.dif_mil = timer.now_mil - timer.was_mil;
-        if ((now_sec - was_sec) > 0)
-        {
-            if (timer.dif_mil > 0)
-            {
-                timer.fps_num = 60'000 / timer.dif_mil;
-                // timer.sig_sec.call(); TODO
-            }
-        }
-        // timer.sig_upd.call(); TODO
+        /* util */
+        util_loop();
         /* draw */
         glutPostRedisplay();
     });

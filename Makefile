@@ -1,7 +1,7 @@
 # basic
 
 NAME:=somigame
-VNUM:=0xa0a1a4
+VNUM:=0xa0a1a5
 TYPE:=RUN
 
 # files
@@ -79,6 +79,7 @@ CFLAGS+= -std=c++20
 CFLAGS+= -O0 -g
 CFLAGS+= -Wno-initializer-overrides
 CFLAGS+= -Wno-error=narrowing -Wno-narrowing
+CFLAGS+= -fpermissive
 CFLAGS+= -D_NAME=$(NAME) -D_NAME_STR=\"$(NAME)\"
 CFLAGS+= -D_VNUM=$(VNUM) -D_VNUM_STR=\"$(VNUM)\"
 CFLAGS+= -D_TYPE_$(TYPE) -D_TYPE_STR=\"$(TYPE)\"
