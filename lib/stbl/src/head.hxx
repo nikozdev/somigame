@@ -48,7 +48,25 @@ _NAMESPACE_ENTER
 
 /** typedef **/
 
-typedef unsigned long int index_t;
-typedef unsigned int count_t;
+using bool_t = bool;
+using flag_t = bool_t;
+
+using schar_t = signed char;
+using uchar_t = unsigned char;
+using cchar_t = char;
+
+using v1u_t = unsigned;
+
+using v1s_t = signed;
+
+using index_t = v1s_t;
+using count_t = v1u_t;
+
+using sbyte_t = signed char;
+using ubyte_t = unsigned char;
+using mbyte_t = char;
+using sdata_t = sbyte_t*;
+using udata_t = ubyte_t*;
+using mdata_t = mbyte_t*;
 
 _NAMESPACE_LEAVE

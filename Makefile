@@ -1,7 +1,7 @@
 # basic
 
 NAME:=somigame
-VNUM:=0xa0a1a5
+VNUM:=0xa0a2a0
 TYPE:=RUN
 
 # files
@@ -77,7 +77,6 @@ LIBLIN:=$(wildcard $(LIBLIN))
 CMAKER:= $(shell which g++) -c -o
 CFLAGS+= -std=c++20
 CFLAGS+= -O0 -g
-CFLAGS+= -Wno-initializer-overrides
 CFLAGS+= -Wno-error=narrowing -Wno-narrowing
 CFLAGS+= -fpermissive
 CFLAGS+= -D_NAME=$(NAME) -D_NAME_STR=\"$(NAME)\"

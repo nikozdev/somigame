@@ -2,11 +2,12 @@
 
 #include "main.hxx"
 #include "util.hxx"
+#include "ecos.hxx"
 #include "gfix.hxx"
 #include "fsix.hxx"
 #include "oput.hxx"
 #include "iput.hxx"
-#include "ecos.hxx"
+#include "game.hxx"
 
 /* content */
 
@@ -20,32 +21,23 @@ int main(int argc, char** argv)
 {
     /* framework */
     glutInit(&argc, argv);
-    /* window */
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
-    glutInitWindowPosition(gfix.window.coord.x, gfix.window.coord.y);
-    glutInitWindowSize(gfix.window.sizes.w, gfix.window.sizes.h);
-    glutCreateWindow(_NAME_STR);
     /* entity component system */
     ecos_init();
     /* graphics */
     gfix_init();
+    /* physics */
+    fsix_init();
+    /* gameplay */
+    game_init();
     /* keyboard */
     key_board_init();
     glutSetKeyRepeat(GLUT_KEY_REPEAT_ON);
+    glutKeyboardFunc(proc_key_board);
     /** menu **/
     /*** quit ***/
     key_bind_set("mq", [](int narg){ exit(_ERROR_NONE); });
-    /*** reset ***/
-    key_bind_set("mr", [](int narg){
-    });
-    /** view **/
-    glutKeyboardFunc(proc_key_board);
     /* oput */
     glutDisplayFunc(draw_loop);
-    glutReshapeFunc([](int sizew, int sizeh) {
-        gfix.window.sizes.w = sizew;
-        gfix.window.sizes.h = sizeh;
-    });
     /* work */
     glutIdleFunc([](){
         /* util */

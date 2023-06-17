@@ -11,94 +11,106 @@
 
 _NAMESPACE_ENTER
 
+/** consdef **/
+
+constexpr int RATIO_X = 16;
+constexpr int RATIO_Y = 9;
+
+constexpr int CAMERA_SIZES_W = UNIT_SCALE_X * RATIO_X;
+constexpr int CAMERA_SIZES_H = UNIT_SCALE_Y * RATIO_Y;
+
+constexpr int GUIS_SIZES_X = UNIT_SCALE_X;
+constexpr int GUIS_SIZES_Y = UNIT_SCALE_X;
+constexpr int GUIS_LAYER = UNIT_COUNT_Z/2+1;
+
 /** enumdef **/
 
-typedef enum screen_from_e {
-    _SCREEN_FROM_C,
-    _SCREEN_FROM_L, _SCREEN_FROM_R, _SCREEN_FROM_B, _SCREEN_FROM_T,
-    _SCREEN_FROM_LB, _SCREEN_FROM_RB, _SCREEN_FROM_LT, _SCREEN_FROM_RT,
-} screen_from_e;
+/*** view facing direction
+ * camera looking direction
+ * whether the camera is looking at east, west, south, north
+ ***/
+typedef enum vfdir_e : index_t {
+    _VFDIR_N = 0x0,
+    _VFDIR_W,
+    _VFDIR_S,
+    _VFDIR_E,
+    _VFDIR_COUNT,
+} vfdir_e;
 
-typedef enum layerid_e {
-    _LAYERID_BG = 0x0'000,
-    _LAYERID_MG = 0x1'000,
-    _LAYERID_FG = 0x2'000,
-    _LAYERID_UI = 0x3'000,
-} layerid_e;
+/*** entity face ***/
+typedef enum eface_e : index_t {
+    _EFACE_F = 0x0,
+    _EFACE_R,
+    _EFACE_B,
+    _EFACE_L,
+    _EFACE_COUNT,
+} eface_e;
+
+typedef enum image_e : index_t {
+    _IMAGE_META_NONE = 0x0,
+    _IMAGE_META_TEST = 0x1,
+    _IMAGE_META_LOGO,
+    _IMAGE_ENTT_MAIN,
+    _IMAGE_TILE_TEST,
+    _IMAGE_FONT_TEST,
+    _IMAGE_FONT_MAIN,
+    _IMAGE_COUNT,
+} image_e;
 
 /** typedef **/
 
-/*** entity component system ***/
+typedef struct color_t {
+    unsigned char value = 0u;
+} color_t, com_color_t;
 
-typedef struct com_screen_from_t {
-    screen_from_e from = _SCREEN_FROM_C;
-} com_screen_from_t;
-
-typedef struct com_visual_t {
-    layerid_e   layerid = _LAYERID_BG;
-    bool_t      visible = _TRUTH;
-} com_visual_t;
-
-typedef struct com_color_t {
-    unsigned char r = _ZERO, g = _ZERO, b = _ZERO;
-} com_color_t;
-
-typedef struct com_image_t {
-    index_t index = 0;
-} com_image_t;
-
-typedef struct com_pixel_data_t {
-    unsigned char*mdata = _NULL;
+typedef struct image_origin_t {
+    GLuint glint = 0;
+    com_sizes_t sizes = { .w = 0, .h = 0 };
+    int mstep = 0;
     size_t msize = 0;
-} com_pixel_data_t;
+    unsigned char*mdata = _NULL;
+} image_t, image_origin_t;
 
-typedef struct com_pixel_size_t {
-    int value = 3;
-} com_pixel_size_t;
+typedef struct image_region_t {
+    index_t index = _IMAGE_META_TEST;
+    coord_t coord = { 0, 0 };
+    sizes_t sizes = { UNIT_SCALE_X, UNIT_SCALE_Y };
+} image_region_t, com_image_t;
 
-/*** vision ***/
+typedef struct image_holder_t {
+    image_region_t faces[_EFACE_COUNT] = {
+        [_EFACE_F] = {
+            .index = _IMAGE_META_NONE,
+            .coord = coord_t { .x = 0, .y = 0 },
+            .sizes = sizes_t { .w = 1, .h = 1 },
+        },
+        [_EFACE_R] = {
+            .index = _IMAGE_META_NONE,
+            .coord = coord_t { .x = 0, .y = 0 },
+            .sizes = sizes_t { .w = 1, .h = 1 },
+        },
+        [_EFACE_B] = {
+            .index = _IMAGE_META_NONE,
+            .coord = coord_t { .x = 0, .y = 0 },
+            .sizes = sizes_t { .w = 1, .h = 1 },
+        },
+        [_EFACE_L] = {
+            .index = _IMAGE_META_NONE,
+            .coord = coord_t { .x = 0, .y = 0 },
+            .sizes = sizes_t { .w = 1, .h = 1 },
+        },
+    };
+} image_holder_t;
 
-typedef struct camera_t {
-    com_scale_t scale = { .x = _UNIT, .y = _UNIT };
-    com_coord_t coord = { .x = _ZERO, .y = _ZERO };
-    com_sizes_t sizes = { .w = 256, .h = 256 };
-} camera_t;
-
-/*** visible ***/
-
-typedef struct image_t {
-    GLuint index = 0;
-    com_pixel_size_t pixel_size = { .value = 3 };
-    com_pixel_data_t pixel_data = { .mdata = _NULL, .msize = _ZERO };
-    com_sizes_t sizes = { .w = _ZERO, .h = _ZERO };
-} image_t;
-
-typedef struct quad_t {
-    com_coord_t coord = { .x = _ZERO, .y = _ZERO, };
-    com_sizes_t sizes = { .w = _UNIT, .h = _UNIT, };
-    com_scale_t scale = { .x = _UNIT, .y = _UNIT, };
-    com_color_t color = { .r = 128, .g = 128, .b = 128 };
-} quad_t;
-
-typedef struct text_t {
-    com_string_t string = { .mdata = _NULL, .msize = _ZERO };
-    com_coord_t coord = { .x = _ZERO, .y = _ZERO };
-    com_sizes_t sizes = { .w = _UNIT, .h = _UNIT };
-    com_scale_t scale = { .x = _UNIT, .y = _UNIT };
-    com_color_t color = { .r = 255, .g = 255, .b = 255 };
-} text_t;
+typedef struct visual_t {
+    bool_t visible = _TRUTH;
+    index_t layer = 0;
+} visual_t, com_visual_t;
 
 /*** system ***/
 
-typedef struct window_t {
-    com_coord_t coord;
-    com_sizes_t sizes;
-} window_t;
-
 typedef struct gfix_t {
-    window_t window;
-    camera_t camera;
-    std::vector<image_t> image_list;
+    ent_t ent_guis = entt::null;
 } gfix_t;
 
 /** datadef **/
@@ -111,16 +123,13 @@ extern void gfix_init();
 
 extern void draw_loop();
 
-extern void draw_global_quad(const quad_t&quad);
-extern void draw_global_text(const text_t&text);
-extern void draw_screen_quad(const quad_t&quad, screen_from_e from = _SCREEN_FROM_C);
-extern void draw_screen_text(const text_t&text, screen_from_e from = _SCREEN_FROM_C);
+extern void load_image_from_fpath_into_value(const std::string&fpath, image_t&image);
+extern void load_image_from_fpath_into_index(const std::string&fpath, index_t index);
+extern void load_image_from_value_into_index(const image_t&image, index_t index);
 
-extern void load_image(const std::string&path, image_t*image);
-extern void load_image_index(const std::string&path, index_t index);
-
-extern void view_move(const com_coord_t&coord);
-extern void view_goto(const com_coord_t&coord);
-extern void view_zoom(const com_scale_t&scale);
+extern void view_move(const coord_t&coord);
+extern void view_goto(const coord_t&coord);
+extern void view_zoom(const scale_t&scale);
+extern void view_turn(bool_t rside = _TRUTH);
 
 _NAMESPACE_LEAVE

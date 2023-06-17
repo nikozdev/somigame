@@ -69,18 +69,15 @@ util_t util;
 void util_loop()
 {
     util.timer.was_mil = util.timer.now_mil;
-    auto was_sec = util.timer.was_mil / 1000;
     util.timer.now_mil = glutGet(GLUT_ELAPSED_TIME) % (1000 * 1000);
-    auto now_sec = util.timer.now_mil/1000;
     util.timer.dif_mil = util.timer.now_mil - util.timer.was_mil;
-    if ((now_sec - was_sec) > 0)
-    {
+    call_on_sec([](int was_sec, int now_sec, int dif_sec){
         if (util.timer.dif_mil > 0)
         {
             util.timer.fps_num = 60'000 / util.timer.dif_mil;
             util.timer.sig_sec.call();
         }
-    }
+    });
     util.timer.sig_upd.call();
 }
 

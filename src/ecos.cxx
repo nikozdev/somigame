@@ -12,62 +12,101 @@ _NAMESPACE_ENTER
 
 ecos_t ecos;
 
-/** actions **/
+constexpr auto&reg = ecos.reg;
 
-static void ecos_com_family_ctor(entt::registry&reg, entt::entity ent)
-{
-    auto*family_e =&reg.get<com_family_t>(ent);
-    auto ancestor = family_e->ancestor;
-    family_e->ancestor = entt::null;
-    ecos_set_ancestor(ent, ancestor);
-    auto children = family_e->children;
-    family_e->children = entt::null;
-    ecos_set_children(ent, children);
-    std::printf("com_family_ctor:%+i:%+i;%+i;%+i;%+i;%c",
-        ent,
-        family_e->ancestor,
-        family_e->children,
-        family_e->siblingl,
-        family_e->siblingr,
-        '\n'
-    );
-}
-static void ecos_com_family_dtor(entt::registry&reg, entt::entity ent)
-{
-    auto*family_e =&reg.get<com_family_t>(ent);
-    std::printf("com_family_dtor:%+i:%+i;%+i;%+i;%+i;%c",
-        ent,
-        family_e->ancestor,
-        family_e->children,
-        family_e->siblingl,
-        family_e->siblingr,
-        '\n'
-    );
-    ecos_set_ancestor(ent);
-    ecos_set_children(ent);
-}
+/** actions **/
 
 void ecos_init()
 {
-    auto&reg = ecos.reg;
-    reg.on_construct<com_family_t>().connect<&ecos_com_family_ctor>();
-    reg.on_destroy<com_family_t>().connect<&ecos_com_family_dtor>();
+    using reg_t = entt::registry;
+    reg.on_construct<com_family_t>().connect<[](reg_t&reg, entt::entity ent)
+    {
+        auto*family_e =&reg.get<com_family_t>(ent);
+        auto ancestor = family_e->ancestor;
+        family_e->ancestor = entt::null;
+        ecos_set_ancestor(ent, ancestor);
+        auto follower = family_e->follower;
+        family_e->follower = entt::null;
+        ecos_set_follower(ent, follower);
+    }>();
+    reg.on_destroy<com_family_t>().connect<[](reg_t&reg, entt::entity ent)
+    {
+        auto*family_e =&reg.get<com_family_t>(ent);
+        ecos_set_ancestor(ent);
+        ecos_set_follower(ent);
+    }>();
+    reg.on_construct<com_cstring_t>().connect<[](reg_t&reg, ent_t ent)
+    {
+        auto&cstring = reg.get<com_cstring_t>(ent);
+        memset(cstring.mdata, '\0', CSTRING_MSIZE);
+    }>();
+    reg.on_destroy<com_cstring_t>().connect<[](reg_t&reg, ent_t ent)
+    {
+        auto&cstring = reg.get<com_cstring_t>(ent);
+        memset(cstring.mdata, '\0', CSTRING_MSIZE);
+    }>();
     auto null = reg.create();
 }
 
-/*** family ***/
+/*** getters ***/
+
+ent_t ecos_get_by_ename(const ename_t&value)
+{
+    for (auto [ent,ename] : reg.view<com_ename_t>().each())
+    { if (ename.value == value.value) { return ent; } }
+    return entt::null;
+}
+ent_t ecos_get_by_iname(const iname_t&value)
+{
+    for (auto [ent,iname] : reg.view<com_iname_t>().each())
+    { if (iname.value == value.value) { return ent; } }
+    return entt::null;
+}
+ent_t ecos_get_by_sname(const sname_t&value)
+{
+    for (auto [ent,sname] : reg.view<com_sname_t>().each())
+    { if (std::strcmp(sname.value, value.value) == 0) { return ent; } }
+    return entt::null;
+}
+
+ent_t ecos_get_ancestor(ent_t ent)
+{
+    if (reg.valid(ent) == _FALSE) { return entt::null; }
+    auto family_e = reg.get<com_family_t>(ent);
+    return family_e.ancestor;
+}
+ent_t ecos_get_follower(ent_t ent)
+{
+    if (reg.valid(ent) == _FALSE) { return entt::null; }
+    if (reg.any_of<com_family_t>(ent)) { return entt::null; }
+    auto family_e = reg.get<com_family_t>(ent);
+    return family_e.follower;
+}
+ent_t ecos_get_siblingl(ent_t ent)
+{
+    if (reg.valid(ent) == _FALSE) { return entt::null; }
+    if (reg.any_of<com_family_t>(ent)) { return entt::null; }
+    auto family_e = reg.get<com_family_t>(ent);
+    return family_e.siblingl;
+}
+ent_t ecos_get_siblingr(ent_t ent)
+{
+    if (reg.valid(ent) == _FALSE) { return entt::null; }
+    if (reg.any_of<com_family_t>(ent)) { return entt::null; }
+    auto family_e = reg.get<com_family_t>(ent);
+    return family_e.siblingr;
+}
+
+/*** vetters ***/
 
 bool ecos_vet_ancestor(ent_t ent, ent_t ancestor)
 {
-    auto&reg = ecos.reg;
     if (reg.valid(ent) == _FALSE) { return _FALSE; }
-    if (reg.valid(ancestor) == _FALSE) { return _FALSE; }
     auto*family_e =&reg.get<com_family_t>(ent);
     return (family_e->ancestor == ancestor);
 }
 bool ecos_vet_ancestry(ent_t ent, ent_t ancestry)
 {
-    auto&reg = ecos.reg;
     if (reg.valid(ent) == _FALSE) { return _FALSE; }
     if (reg.valid(ancestry) == _FALSE) { return _FALSE; }
     auto*family_e =&reg.get<com_family_t>(ent);
@@ -79,19 +118,83 @@ bool ecos_vet_ancestry(ent_t ent, ent_t ancestry)
     }
     return _FALSE;
 }
+
+bool ecos_vet_siblings(ent_t ent, ent_t siblings)
+{ return ecos_vet_siblingl(ent, siblings) || ecos_vet_siblingr(siblings); }
+bool ecos_vet_siblings(ent_t ent, ent_t siblingl, ent_t siblingr)
+{ return ecos_vet_siblingl(ent, siblingl) && ecos_vet_siblingr(siblingr); }
+bool ecos_vet_siblingl(ent_t ent, ent_t siblingl)
+{
+    if (reg.valid(ent) == _FALSE) { return _FALSE; }
+    if (reg.valid(siblingl) == _FALSE) { return _FALSE; }
+    auto*family_e =&reg.get<com_family_t>(ent);
+    if (family_e->siblingl == siblingl) { return _TRUTH; }
+    auto temp = family_e->siblingl;
+    while (reg.valid(temp))
+    {
+        if (siblingl == temp) { return _TRUTH; }
+        else { temp = reg.get<com_family_t>(temp).siblingl; }
+    }
+    return _FALSE;
+}
+bool ecos_vet_siblingr(ent_t ent, ent_t siblingr)
+{
+    if (reg.valid(ent) == _FALSE) { return _FALSE; }
+    if (reg.valid(siblingr) == _FALSE) { return _FALSE; }
+    auto*family_e =&reg.get<com_family_t>(ent);
+    if (family_e->siblingr == siblingr) { return _TRUTH; }
+    auto temp = family_e->siblingr;
+    while (reg.valid(temp))
+    {
+        if (siblingr == temp) { return _TRUTH; }
+        else { temp = reg.get<com_family_t>(temp).siblingr; }
+    }
+    return _FALSE;
+}
+
+bool ecos_vet_follower(ent_t ent, ent_t follower)
+{
+    auto&reg = ecos.reg;
+    if (reg.valid(ent) == _FALSE) { return _FALSE; }
+    return reg.get<com_family_t>(ent).follower == follower;
+}
+bool ecos_vet_children(ent_t ent, ent_t children)
+{
+    auto&reg = ecos.reg;
+    if (reg.valid(ent) == _FALSE) { return _FALSE; }
+    if (reg.valid(children) == _FALSE) { return _FALSE; }
+    if (ecos_vet_follower(ent, children)) { return _TRUTH; }
+    else { return ecos_vet_siblings(reg.get<com_family_t>(ent).follower, children); }
+}
+bool ecos_vet_inherits(ent_t ent, ent_t inherits)
+{
+    if (reg.valid(ent) == _FALSE) { return _FALSE; }
+    if (reg.valid(inherits) == _FALSE) { return _FALSE; }
+    auto follower = ent;
+    auto*family_f =&reg.get<com_family_t>(follower);
+    while(reg.valid(family_f->follower))
+    {
+        if (ecos_vet_children(follower, inherits)) { return _TRUTH; }
+        follower = family_f->follower;
+        family_f =&reg.get<com_family_t>(family_f->follower);
+    }
+    return _FALSE;
+}
+
+/*** setters ***/
+
 bool ecos_set_ancestor(ent_t ent, ent_t ancestor)
 {
     if (ent == ancestor) { return _FALSE; }
     if (ecos_vet_ancestor(ent, ancestor)) { return _FALSE; }
-    if (ecos_vet_children(ent, ancestor)) { return _FALSE; }
-    auto&reg = ecos.reg;
+    if (ecos_vet_follower(ent, ancestor)) { return _FALSE; }
     if (reg.valid(ent) == _FALSE) { return _FALSE; }
     auto*family_e =&reg.get<com_family_t>(ent);
     if (reg.valid(family_e->ancestor))
     {
         auto*family_a =&reg.get<com_family_t>(family_e->ancestor);
-        auto children = family_a->children;
-        if (children == ent) { family_a->children = entt::null; }
+        auto follower = family_a->follower;
+        if (follower == ent) { family_a->follower = entt::null; }
         family_e->ancestor = entt::null;
     }
     auto siblingl = family_e->siblingl;
@@ -109,10 +212,10 @@ bool ecos_set_ancestor(ent_t ent, ent_t ancestor)
     if (reg.valid(ancestor))
     {
         auto*family_a =&reg.get<com_family_t>(ancestor);
-        auto children = family_a->children;
-        if (reg.valid(children))
+        auto follower = family_a->follower;
+        if (reg.valid(follower))
         {
-            auto siblingr = children;
+            auto siblingr = follower;
             auto*family_r =&reg.get<com_family_t>(siblingr);
             while (reg.valid(family_r->siblingr))
             {
@@ -122,116 +225,30 @@ bool ecos_set_ancestor(ent_t ent, ent_t ancestor)
             family_e->siblingl = siblingr;
             family_r->siblingr = ent;
         }
-        else { family_a->children = ent; }
+        else { family_a->follower = ent; }
     }
     family_e->ancestor = ancestor;
     return _TRUTH;
 }
-
-bool ecos_vet_siblings(ent_t ent, ent_t siblings)
-{ return ecos_vet_siblingl(ent, siblings) || ecos_vet_siblingr(siblings); }
-bool ecos_vet_siblings(ent_t ent, ent_t siblingl, ent_t siblingr)
-{ return ecos_vet_siblingl(ent, siblingl) && ecos_vet_siblingr(siblingr); }
-bool ecos_vet_siblingl(ent_t ent, ent_t siblingl)
+bool ecos_set_follower(ent_t ent, ent_t follower)
 {
-    auto&reg = ecos.reg;
+    if (ent == follower) { return _FALSE; }
+    if (ecos_vet_ancestry(ent, follower)) { return _FALSE; }
     if (reg.valid(ent) == _FALSE) { return _FALSE; }
-    if (reg.valid(siblingl) == _FALSE) { return _FALSE; }
     auto*family_e =&reg.get<com_family_t>(ent);
-    if (family_e->siblingl == siblingl) { return _TRUTH; }
-    auto temp = family_e->siblingl;
-    while (reg.valid(temp))
+    if (reg.valid(family_e->follower))
     {
-        if (siblingl == temp) { return _TRUTH; }
-        else { temp = reg.get<com_family_t>(temp).siblingl; }
-    }
-    return _FALSE;
-}
-bool ecos_vet_siblingr(ent_t ent, ent_t siblingr)
-{
-    auto&reg = ecos.reg;
-    if (reg.valid(ent) == _FALSE) { return _FALSE; }
-    if (reg.valid(siblingr) == _FALSE) { return _FALSE; }
-    auto*family_e =&reg.get<com_family_t>(ent);
-    if (family_e->siblingr == siblingr) { return _TRUTH; }
-    auto temp = family_e->siblingr;
-    while (reg.valid(temp))
-    {
-        if (siblingr == temp) { return _TRUTH; }
-        else { temp = reg.get<com_family_t>(temp).siblingr; }
-    }
-    return _FALSE;
-}
-bool ecos_set_siblingl(ent_t ent, ent_t siblingl)
-{
-    if (ent == siblingl) { return _FALSE; }
-    if (ecos_vet_siblingr(ent, siblingl)) { return _FALSE; }
-    auto&reg = ecos.reg;
-    if (reg.valid(ent) == _FALSE) { return _FALSE; }
-    auto*family_e =&reg.get<com_family_t>(ent);
-    if (reg.valid(family_e->siblingl))
-    {
-        auto*family_l =&reg.get<com_family_t>(family_e->siblingl);
-        family_l->siblingr = siblingl;
-    }
-    auto*family_l =&reg.get<com_family_t>(siblingl);
-    family_l->siblingr = ent;
-    family_e->siblingl = siblingl;
-    return _TRUTH;
-}
-bool ecos_set_siblingr(ent_t ent, ent_t siblingr)
-{
-    if (ent == siblingr) { return _FALSE; }
-    if (ecos_vet_siblingl(ent, siblingr)) { return _FALSE; }
-    auto&reg = ecos.reg;
-    if (reg.valid(ent) == _FALSE) { return _FALSE; }
-    auto*family_e =&reg.get<com_family_t>(ent);
-    if (reg.valid(family_e->siblingr))
-    {
-        auto*family_r =&reg.get<com_family_t>(family_e->siblingr);
-        family_r->siblingl = siblingr;
-    }
-    auto*family_r = &reg.get<com_family_t>(siblingr);
-    family_r->siblingl = ent;
-    family_e->siblingr = siblingr;
-    return _TRUTH;
-}
-bool ecos_set_siblings(ent_t ent, ent_t siblingl, ent_t siblingr)
-{
-    if (ecos_vet_siblings(ent, siblingl, siblingr)) { return _FALSE; }
-    return ecos_set_siblingl(siblingl) && ecos_set_siblingr(siblingr);
-}
-
-bool ecos_vet_children(ent_t ent, ent_t children)
-{
-    auto&reg = ecos.reg;
-    if (reg.valid(ent) == _FALSE) { return _FALSE; }
-    if (reg.valid(children) == _FALSE) { return _FALSE; }
-    auto*family_e =&reg.get<com_family_t>(ent);
-    if (family_e->children == children) { return _TRUTH; }
-    else { return ecos_vet_siblings(family_e->children, children); }
-}
-bool ecos_set_children(ent_t ent, ent_t children)
-{
-    if (ent == children) { return _FALSE; }
-    if (ecos_vet_children(ent, children)) { return _FALSE; }
-    if (ecos_vet_ancestry(ent, children)) { return _FALSE; }
-    auto&reg = ecos.reg;
-    if (reg.valid(ent) == _FALSE) { return _FALSE; }
-    auto*family_e =&reg.get<com_family_t>(ent);
-    if (reg.valid(family_e->children))
-    {
-        auto children = family_e->children;
-        auto*family_c =&reg.get<com_family_t>(children);
-        family_c->ancestor = entt::null;
-        auto siblingl = family_c->siblingl;
+        auto follower = family_e->follower;
+        auto*family_f =&reg.get<com_family_t>(follower);
+        family_f->ancestor = entt::null;
+        auto siblingl = family_f->siblingl;
         auto*family_l =&reg.get<com_family_t>(siblingl);
         while (reg.valid(family_l->siblingl))
         {
             family_l->siblingr = entt::null;
             family_l->ancestor = entt::null;
         }
-        auto siblingr = family_c->siblingr;
+        auto siblingr = family_f->siblingr;
         auto*family_r =&reg.get<com_family_t>(siblingr);
         while (reg.valid(family_r->siblingr))
         {
@@ -239,21 +256,21 @@ bool ecos_set_children(ent_t ent, ent_t children)
             family_r->ancestor = entt::null;
         }
     }
-    family_e->children = children;
-    if (reg.valid(children))
+    family_e->follower = follower;
+    if (reg.valid(follower))
     {
-        auto*family_c =&reg.get<com_family_t>(children);
-        auto siblingr = family_c->siblingr;
+        auto*family_f =&reg.get<com_family_t>(follower);
+        auto siblingr = family_f->siblingr;
         if (reg.valid(siblingr))
         {
             auto*family_r =&reg.get<com_family_t>(siblingr);
-            if (reg.valid(family_c->siblingl))
+            if (reg.valid(family_f->siblingl))
             {
-                family_r->siblingl = family_c->siblingl;
+                family_r->siblingl = family_f->siblingl;
             }
             else
             {
-                family_r->siblingl = children;
+                family_r->siblingl = follower;
             }
             while (reg.valid(family_r->siblingl))
             {
@@ -262,7 +279,7 @@ bool ecos_set_children(ent_t ent, ent_t children)
                 family_r =&reg.get<com_family_t>(siblingr);
             }
         }
-        auto siblingl = family_c->siblingl;
+        auto siblingl = family_f->siblingl;
         if (reg.valid(siblingl))
         {
             auto*family_l =&reg.get<com_family_t>(siblingl);
@@ -272,75 +289,10 @@ bool ecos_set_children(ent_t ent, ent_t children)
                 siblingl = family_l->siblingl;
                 family_l =&reg.get<com_family_t>(siblingl);
             }
-            family_l->siblingl = children;
-            family_c->siblingr = siblingl;
+            family_l->siblingl = follower;
+            family_f->siblingr = siblingl;
         }
     }
-    return _TRUTH;
-}
-bool ecos_insert_child(ent_t ent, ent_t child)
-{
-    if (ent == child) { return _FALSE; }
-    if (ecos_vet_children(ent, child) == _TRUTH) { return _FALSE; }
-    auto&reg = ecos.reg;
-    if (reg.valid(ent) == _FALSE) { return _FALSE; }
-    if (reg.valid(child) == _FALSE) { return _FALSE; }
-    auto*family_c =&reg.get<com_family_t>(child);
-    if (reg.valid(family_c->ancestor))
-    {
-        auto*family_a =&reg.get<com_family_t>(family_c->ancestor);
-        if (family_a->children == child)
-        {
-            family_a->children = entt::null;
-        }
-    }
-    family_c->ancestor = ent;
-    if (reg.valid(family_c->siblingl))
-    {
-        reg.get<com_family_t>(family_c->siblingl).siblingr = family_c->siblingr;
-        family_c->siblingl = entt::null;
-    }
-    if (reg.valid(family_c->siblingr))
-    {
-        reg.get<com_family_t>(family_c->siblingr).siblingl = family_c->siblingl;
-        family_c->siblingr = entt::null;
-    }
-    auto*family_e =&reg.get<com_family_t>(ent);
-    if (reg.valid(family_e->children))
-    {
-        auto siblingr = family_e->children;
-        auto*family_r =&reg.get<com_family_t>(siblingr);
-        while (reg.valid(family_r->siblingr))
-        {
-            siblingr = family_r->siblingr;
-            family_r =&reg.get<com_family_t>(siblingr);
-        }
-        family_r->siblingr = child;
-        family_c->siblingl = siblingr;
-    }
-    else { family_e->children = child; }
-    return _TRUTH;
-}
-bool ecos_remove_child(ent_t ent, ent_t child)
-{
-    if (ent == child) { return _FALSE; }
-    if (ecos_vet_children(ent, child) == _FALSE) { return _FALSE; }
-    auto&reg = ecos.reg;
-    if (reg.valid(ent) == _FALSE) { return _FALSE; }
-    if (reg.valid(child) == _FALSE) { return _FALSE; }
-    auto*family_c =&reg.get<com_family_t>(child);
-    if (reg.valid(family_c->siblingl))
-    {
-        reg.get<com_family_t>(family_c->siblingl).siblingr = family_c->siblingr;
-        family_c->siblingl = entt::null;
-    }
-    if (reg.valid(family_c->siblingr))
-    {
-        reg.get<com_family_t>(family_c->siblingr).siblingl = family_c->siblingl;
-        family_c->siblingr = entt::null;
-    }
-    auto*family_e =&reg.get<com_family_t>(ent);
-    if (family_e->children == child) { family_e->children = entt::null; }
     return _TRUTH;
 }
 
