@@ -13,26 +13,10 @@ _NAMESPACE_ENTER
 
 /** typedef **/
 
-/*** enums ***/
-
-typedef enum ename_e {
-    _ENAME_META_NONE = 0x0,
-    _ENAME_ENTT_MAIN = 0x1,
-    _ENAME_GUIS,
-    _ENAME_GUIS_MM_QUAD,
-    _ENAME_GUIS_LM_QUAD, _ENAME_GUIS_LM_TEXT,
-    _ENAME_GUIS_RM_QUAD, _ENAME_GUIS_RM_TEXT,
-    _ENAME_GUIS_MB_QUAD, _ENAME_GUIS_MB_TEXT,
-    _ENAME_GUIS_MT_QUAD, _ENAME_GUIS_MT_TEXT,
-    _ENAME_GUIS_LB_QUAD, _ENAME_GUIS_LB_TEXT, _ENAME_GUIS_LB_LOGO,
-    _ENAME_GUIS_RB_QUAD, _ENAME_GUIS_RB_TEXT, _ENAME_GUIS_RB_LOGO,
-    _ENAME_GUIS_LT_QUAD, _ENAME_GUIS_LT_TEXT, _ENAME_GUIS_LT_LOGO,
-    _ENAME_GUIS_RT_QUAD, _ENAME_GUIS_RT_TEXT, _ENAME_GUIS_RT_LOGO,
-} ename_e;
-
 /*** entity ***/
 
 typedef entt::entity ent_t;
+typedef ent_t entity_t;
 
 /*** component ***/
 
@@ -43,43 +27,19 @@ typedef struct family_t {
     ent_t siblingr = entt::null;
 } family_t, com_family_t;
 
-typedef struct iname_t {
-    const index_t value = 0;
-} iname_t, com_iname_t;
+using com_iname_t = iname_t;
+using com_sname_t = sname_t;
 
-typedef struct sname_t {
-    static constexpr const msize_t msize = CSTRING_MSIZE;
-    const mbyte_t value[CSTRING_MSIZE];
-} sname_t, com_sname_t;
+using com_ename_t = ename_t;
+using com_cstring_t = cstring_t;
 
-typedef struct ename_t {
-    const ename_e value = _ENAME_META_NONE;
-} ename_t, com_ename_t;
+using com_coord_t = coord_t;
+using com_direc_t = direc_t;
+using com_scale_t = scale_t;
+using com_sizes_t = sizes_t;
 
-typedef struct cstring_t {
-    static constexpr const msize_t msize = CSTRING_MSIZE;
-    mbyte_t mdata[msize];
-} cstring_t, com_cstring_t;
-
-typedef struct coord_t {
-    v1s32_t x = 0, y = 0;
-} coord_t, com_coord_t;
-
-typedef struct relpos_t {
-    v1s_t x = RELPOS_MID, y = RELPOS_MID;
-} relpos_t, com_relpos_t;
-
-typedef struct anchor_t {
-    v1s_t x = RELPOS_MID, y = RELPOS_MID;
-} anchor_t, com_anchor_t;
-
-typedef struct sizes_t {
-    v1s32_t w = 0, h = 0;
-} sizes_t, com_sizes_t;
-
-typedef struct scale_t {
-    v1s32_t x = 1, y = 1;
-} scale_t, com_scale_t;
+using com_relpos_t = relpos_t;
+using com_anchor_t = anchor_t;
 
 /*** system ***/
 

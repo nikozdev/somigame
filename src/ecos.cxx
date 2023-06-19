@@ -38,12 +38,13 @@ void ecos_init()
     reg.on_construct<com_cstring_t>().connect<[](reg_t&reg, ent_t ent)
     {
         auto&cstring = reg.get<com_cstring_t>(ent);
-        memset(cstring.mdata, '\0', CSTRING_MSIZE);
+        cstring.msize = std::min(cstring.msize, CSTRING_MSIZE);
+        memset(cstring.mdata, '\0', cstring.msize);
     }>();
     reg.on_destroy<com_cstring_t>().connect<[](reg_t&reg, ent_t ent)
     {
         auto&cstring = reg.get<com_cstring_t>(ent);
-        memset(cstring.mdata, '\0', CSTRING_MSIZE);
+        memset(cstring.mdata, '\0', cstring.msize);
     }>();
     auto null = reg.create();
 }
@@ -52,19 +53,19 @@ void ecos_init()
 
 ent_t ecos_get_by_ename(const ename_t&value)
 {
-    for (auto [ent,ename] : reg.view<com_ename_t>().each())
+    for (auto&&[ent,ename] : reg.view<com_ename_t>().each())
     { if (ename.value == value.value) { return ent; } }
     return entt::null;
 }
 ent_t ecos_get_by_iname(const iname_t&value)
 {
-    for (auto [ent,iname] : reg.view<com_iname_t>().each())
+    for (auto&&[ent,iname] : reg.view<com_iname_t>().each())
     { if (iname.value == value.value) { return ent; } }
     return entt::null;
 }
 ent_t ecos_get_by_sname(const sname_t&value)
 {
-    for (auto [ent,sname] : reg.view<com_sname_t>().each())
+    for (auto&&[ent,sname] : reg.view<com_sname_t>().each())
     { if (std::strcmp(sname.value, value.value) == 0) { return ent; } }
     return entt::null;
 }

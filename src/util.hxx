@@ -11,6 +11,25 @@ _NAMESPACE_ENTER
 
 /** typedef **/
 
+/*** enums ***/
+
+typedef enum ename_e {
+    _ENAME_META_NONE = 0x0,
+    _ENAME_ENTT_HERO = 0x1,
+    _ENAME_GUIS,
+    _ENAME_GUIS_MM_QUAD,
+    _ENAME_GUIS_LM_QUAD, _ENAME_GUIS_LM_TEXT,
+    _ENAME_GUIS_RM_QUAD, _ENAME_GUIS_RM_TEXT,
+    _ENAME_GUIS_MB_QUAD, _ENAME_GUIS_MB_TEXT,
+    _ENAME_GUIS_MT_QUAD, _ENAME_GUIS_MT_TEXT,
+    _ENAME_GUIS_LB_QUAD, _ENAME_GUIS_LB_TEXT, _ENAME_GUIS_LB_LOGO,
+    _ENAME_GUIS_RB_QUAD, _ENAME_GUIS_RB_TEXT, _ENAME_GUIS_RB_LOGO,
+    _ENAME_GUIS_LT_QUAD, _ENAME_GUIS_LT_TEXT, _ENAME_GUIS_LT_LOGO,
+    _ENAME_GUIS_RT_QUAD, _ENAME_GUIS_RT_TEXT, _ENAME_GUIS_RT_LOGO,
+} ename_e;
+
+/*** classes ***/
+
 class signal_t
 {
 public: /* typedef */
@@ -43,6 +62,56 @@ typedef struct util_t {
     timer_t timer;
 } util_t;
 
+/*** struct ***/
+
+typedef struct iname_t {
+    const index_t value = 0;
+} iname_t;
+
+typedef struct sname_t {
+    const msize_t msize = CSTRING_MSIZE;
+    const mbyte_t value[CSTRING_MSIZE];
+} sname_t;
+
+typedef struct ename_t {
+    const ename_e value = _ENAME_META_NONE;
+} ename_t;
+
+typedef struct cstring_t {
+    msize_t msize = CSTRING_MSIZE;
+    mbyte_t mdata[CSTRING_MSIZE];
+} cstring_t;
+
+
+typedef struct pos2d_t {
+    v1s_t x = 0, y = 0;
+} pos2d_t, vec2d_t;
+
+typedef struct pos3d_t {
+    v1s_t x = 0, y = 0, z = 0;
+} pos3d_t, vec3d_t;
+using coord_t = pos3d_t;
+
+typedef struct direc_t {
+    v1s_t x = 0, y = 0;
+} direc_t;
+
+typedef struct sizes_t {
+    v1s_t w = 0, h = 0;
+} sizes_t;
+
+typedef struct scale_t {
+    v1s_t x = SCALE_MID, y = SCALE_MID;
+} scale_t;
+
+typedef struct relpos_t {
+    v1s_t x = RELPOS_MID, y = RELPOS_MID;
+} relpos_t;
+
+typedef struct anchor_t {
+    v1s_t x = RELPOS_MID, y = RELPOS_MID;
+} anchor_t;
+
 /** datadef **/
 
 extern util_t util;
@@ -52,17 +121,36 @@ extern util_t util;
 extern void util_loop();
 
 template<typename func_t>
-void call_on_sec(func_t func)
+void call_on_sec(func_t func, count_t sec = 1)
 {
-    auto was_sec = util.timer.was_mil / 1000;
-    auto now_sec = util.timer.now_mil / 1000;
-    auto dif_sec = was_sec - now_sec;
-    if (dif_sec > 0) { func(was_sec, now_sec, dif_sec); }
+    auto was = util.timer.was_mil / (sec * 1'000);
+    auto now = util.timer.now_mil / (sec * 1'000);
+    auto dif = now - was;
+    if (dif > 0) { func(was, now, dif); }
 }
+
+template<typename func_t>
+void call_on_mil(func_t func, count_t mil = 1)
+{
+    auto was = util.timer.was_mil / mil;
+    auto now = util.timer.now_mil / mil;
+    auto dif = now - was;
+    if (dif > 0) { func(was, now, dif); }
+}
+
+/** getters **/
 
 /*** numbers ***/
 
-constexpr inline int get_num_sign(int n) { return n < 0 ? -1 : +1; }
+template <typename t_num_t>
+constexpr inline int get_num_sign(t_num_t n) { return n < 0 ? -1 : +1; }
+
+template <typename t_vec_t = direc_t>
+constexpr inline t_vec_t get_vec_turn(t_vec_t vec, bool lside = _TRUTH)
+{
+    const auto rside = !lside;
+    return { vec.y * (-1*lside+rside), vec.x * (-1*rside+lside), };
+}
 
 /** symbols **/
 /*** char ***/

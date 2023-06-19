@@ -3,6 +3,8 @@
 #include "util.hxx"
 #include "gfix.hxx"
 
+#include <GL/glut.h>
+
 /* defines */
 
 /* content */
@@ -68,9 +70,12 @@ util_t util;
 
 void util_loop()
 {
-    util.timer.was_mil = util.timer.now_mil;
-    util.timer.now_mil = glutGet(GLUT_ELAPSED_TIME) % (1000 * 1000);
-    util.timer.dif_mil = util.timer.now_mil - util.timer.was_mil;
+    constexpr auto&timer = util.timer;
+    timer.was_mil = util.timer.now_mil;
+    timer.now_mil = glutGet(GLUT_ELAPSED_TIME);
+    timer.dif_mil = util.timer.now_mil - util.timer.was_mil;
+    if (timer.dif_mil == 0) { timer.dif_mil = 1; }
+    else if (timer.dif_mil < 0) { timer.dif_mil = -timer.dif_mil; }
     call_on_sec([](int was_sec, int now_sec, int dif_sec){
         if (util.timer.dif_mil > 0)
         {

@@ -74,15 +74,32 @@ using schar_t = signed char;
 using uchar_t = unsigned char;
 using cchar_t = char;
 
+template<typename t_num_t>
+struct v2n_t { t_num_t x = 0, y = 0; };
+template<typename t_num_t>
+struct v3n_t { t_num_t x = 0, y = 0, z = 0; };
+
 using v1u08_t = uint8_t;
 using v1u16_t = uint16_t;
 using v1u32_t = uint32_t;
+using v1u64_t = uint64_t;
 using v1u_t = unsigned;
+using v2u_t = v2n_t<v1u_t>;
+using v3u_t = v3n_t<v1u_t>;
 
 using v1s08_t = int8_t;
 using v1s16_t = int16_t;
 using v1s32_t = int32_t;
+using v1s64_t = int64_t;
 using v1s_t = signed;
+using v2s_t = v2n_t<v1s_t>;
+using v3s_t = v3n_t<v1s_t>;
+
+using v1f32_t = float;
+using v1f64_t = float;
+using v1f_t = float;
+using v2f_t = v2n_t<v1f_t>;
+using v3f_t = v3n_t<v1f_t>;
 
 using index_t = v1s_t;
 using count_t = v1u_t;
@@ -99,9 +116,11 @@ using msize_t = size_t;
 
 constexpr v1s_t UNIT_SCALE_X = 0x010;
 constexpr v1s_t UNIT_SCALE_Y = 0x010;
+constexpr v1s_t UNIT_SCALE_Z = 0x001;
 constexpr v1s_t UNIT_COUNT_X = 0x100;
 constexpr v1s_t UNIT_COUNT_Y = 0x100;
 constexpr v1s_t UNIT_COUNT_Z = 0x100;
+constexpr v1s_t UNIT_COUNT = UNIT_COUNT_X*UNIT_COUNT_Y*UNIT_COUNT_Z;
 
 const size_t CSTRING_MSIZE = 0x100;
 
@@ -109,5 +128,10 @@ constexpr v1s_t RELPOS_DIV = 128;
 constexpr v1s_t RELPOS_MID = 0x0;
 constexpr v1s_t RELPOS_MIN = -64;
 constexpr v1s_t RELPOS_MAX = +64;
+
+constexpr v1s_t SCALE_DIV = 64;
+constexpr v1s_t SCALE_MID = 0x0;
+constexpr v1s_t SCALE_MIN = -64;
+constexpr v1s_t SCALE_MAX = +64;
 
 _NAMESPACE_LEAVE

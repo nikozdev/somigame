@@ -2,12 +2,15 @@
 
 #include "main.hxx"
 #include "util.hxx"
-#include "ecos.hxx"
-#include "gfix.hxx"
-#include "fsix.hxx"
 #include "oput.hxx"
 #include "iput.hxx"
+#include "ecos.hxx"
+#include "fsys.hxx"
+#include "gfix.hxx"
+#include "fsix.hxx"
 #include "game.hxx"
+
+#include <GL/glut.h>
 
 /* content */
 
@@ -17,37 +20,27 @@ _NAMESPACE_ENTER
 
 /** actions **/
 
+void main_loop()
+{
+    util_loop();
+    fsix_loop();
+    call_on_mil([](int, int, int){
+        gfix_loop();
+    }, 16);
+    game_loop();
+}
+
 int main(int argc, char** argv)
 {
-    /* framework */
     glutInit(&argc, argv);
-    /* entity component system */
     ecos_init();
-    /* graphics */
+    fsys_init();
     gfix_init();
-    /* physics */
     fsix_init();
-    /* gameplay */
     game_init();
-    /* keyboard */
-    key_board_init();
-    glutSetKeyRepeat(GLUT_KEY_REPEAT_ON);
-    glutKeyboardFunc(proc_key_board);
-    /** menu **/
-    /*** quit ***/
-    key_bind_set("mq", [](int narg){ exit(_ERROR_NONE); });
-    /* oput */
-    glutDisplayFunc(draw_loop);
-    /* work */
-    glutIdleFunc([](){
-        /* util */
-        util_loop();
-        /* draw */
-        glutPostRedisplay();
-    });
+    iput_init();
+    glutIdleFunc(main_loop);
     glutMainLoop();
-    /* final */
-    std::clog << "good day, sir !" << std::endl;
     return _ERROR_NONE;
 }
 
