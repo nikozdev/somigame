@@ -13,7 +13,17 @@ _NAMESPACE_ENTER
 
 /** consdef **/
 
-constexpr int TILE_IMAGE_COUNT = 0b1'000'00'000;
+constexpr auto TILE_IMAGE_COUNT = 0b1'000'00'000;
+constexpr auto TILE_COUNT_X = 0xff;
+constexpr auto TILE_COUNT_Y = 0xff;
+constexpr auto TILE_COUNT_Z = 0xff;
+constexpr auto TILE_COUNT = TILE_COUNT_X * TILE_COUNT_Y * TILE_COUNT_Z;
+constexpr auto TILE_SCALE_X = 0x10;
+constexpr auto TILE_SCALE_Y = 0x10;
+constexpr auto TILE_SCALE_Z = 0x10;
+constexpr auto GAME_HALFS_X = (TILE_COUNT_X * TILE_SCALE_X) / 2;
+constexpr auto GAME_HALFS_Y = (TILE_COUNT_Y * TILE_SCALE_Y) / 2;
+constexpr auto GAME_HALFS_Z = (TILE_COUNT_Z * TILE_SCALE_Z) / 2;
 
 /** typedef **/
 
@@ -29,16 +39,8 @@ typedef struct block_t {
     bool _;
 } block_t, com_block_t;
 
-typedef struct game_t {
-    ent_t ent_hero = entt::null;
-    ent_t ent_somi = entt::null;
-    ent_t tile_map[UNIT_COUNT];
-} game_t;
-
 
 /** datadef **/
-
-extern game_t game;
 
 /** actions **/
 
@@ -48,13 +50,13 @@ extern void game_loop();
 
 /*** hero ***/
 
-extern void hero_goto(const coord_t&coord);
 extern void hero_goto_x(v1s_t gotox = 0);
 extern void hero_goto_y(v1s_t gotoy = 0);
 extern void hero_goto_z(v1s_t gotoz = 0);
-extern void hero_move(const mover_t&mover);
 extern void hero_move_x(v1s_t movex = 0);
 extern void hero_move_y(v1s_t movey = 0);
+extern void hero_step_x(v1s_t stepx);
+extern void hero_step_y(v1s_t stepy);
 extern void hero_turn(bool_t lside = _TRUTH);
 
 /** getters **/
@@ -87,6 +89,8 @@ ent_t get_tile(coord_t coord);
 /** vetters **/
 
 bool vet_tile(coord_t coord);
+bool vet_floor(coord_t coord);
+bool vet_block(coord_t coord);
 
 /** setters **/
 

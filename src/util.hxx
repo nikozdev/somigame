@@ -16,6 +16,7 @@ _NAMESPACE_ENTER
 typedef enum ename_e {
     _ENAME_META_NONE = 0x0,
     _ENAME_ENTT_HERO = 0x1,
+    _ENAME_GFIX_VIEW,
     _ENAME_GUIS,
     _ENAME_GUIS_MM_QUAD,
     _ENAME_GUIS_LM_QUAD, _ENAME_GUIS_LM_TEXT,
@@ -57,10 +58,6 @@ typedef struct timer_t {
     signal_t sig_sec; /* call on every second */
     signal_t sig_upd; /* call on every update */
 } timer_t;
-
-typedef struct util_t {
-    timer_t timer;
-} util_t;
 
 /*** struct ***/
 
@@ -112,9 +109,13 @@ typedef struct anchor_t {
     v1s_t x = RELPOS_MID, y = RELPOS_MID;
 } anchor_t;
 
+typedef struct recta_t {
+    v1s_t sl = 0, sr = 0, sb = 0, st = 0;
+} recta_t;
+
 /** datadef **/
 
-extern util_t util;
+extern timer_t timer;
 
 /** actions **/
 
@@ -123,8 +124,8 @@ extern void util_loop();
 template<typename func_t>
 void call_on_sec(func_t func, count_t sec = 1)
 {
-    auto was = util.timer.was_mil / (sec * 1'000);
-    auto now = util.timer.now_mil / (sec * 1'000);
+    auto was = timer.was_mil / (sec * 1'000);
+    auto now = timer.now_mil / (sec * 1'000);
     auto dif = now - was;
     if (dif > 0) { func(was, now, dif); }
 }
@@ -132,8 +133,8 @@ void call_on_sec(func_t func, count_t sec = 1)
 template<typename func_t>
 void call_on_mil(func_t func, count_t mil = 1)
 {
-    auto was = util.timer.was_mil / mil;
-    auto now = util.timer.now_mil / mil;
+    auto was = timer.was_mil / mil;
+    auto now = timer.now_mil / mil;
     auto dif = now - was;
     if (dif > 0) { func(was, now, dif); }
 }

@@ -3,7 +3,7 @@
 /* headers */
 
 #include "head.hxx"
-#include "ecos.hxx"
+#include "util.hxx"
 
 /* content */
 
@@ -11,15 +11,15 @@ _NAMESPACE_ENTER
 
 /** consdef **/
 
-constexpr int RATIO_X = 16;
-constexpr int RATIO_Y = 9;
+constexpr auto RATIO_X = 16;
+constexpr auto RATIO_Y = 9;
 
-constexpr int CAMERA_SIZES_W = UNIT_SCALE_X * RATIO_X;
-constexpr int CAMERA_SIZES_H = UNIT_SCALE_Y * RATIO_Y;
+constexpr auto VIEW_SIZES_W = UNIT_SCALE_X * RATIO_X;
+constexpr auto VIEW_SIZES_H = UNIT_SCALE_Y * RATIO_Y;
 
-constexpr int GUIS_SIZES_X = UNIT_SCALE_X;
-constexpr int GUIS_SIZES_Y = UNIT_SCALE_X;
-constexpr int GUIS_LAYER = UNIT_COUNT_Z/2+1;
+constexpr auto GUIS_SIZES_X = UNIT_SCALE_X;
+constexpr auto GUIS_SIZES_Y = UNIT_SCALE_X;
+constexpr auto GUIS_LAYER = UNIT_COUNT_Z/2+1;
 
 /** enumdef **/
 
@@ -47,11 +47,11 @@ typedef enum image_e : index_t {
 
 typedef struct color_t {
     unsigned char value = 0u;
-} color_t, com_color_t;
+} color_t, color_t;
 
 typedef struct image_origin_t {
     index_t glint = 0;
-    com_sizes_t sizes = { .w = 0, .h = 0 };
+    sizes_t sizes = { .w = 0, .h = 0 };
     int mstep = 0;
     size_t msize = 0;
     unsigned char*mdata = _NULL;
@@ -61,11 +61,11 @@ typedef struct image_region_t {
     index_t index = _IMAGE_META_TEST;
     pos2d_t coord = { 0, 0 };
     sizes_t sizes = { UNIT_SCALE_X, UNIT_SCALE_Y };
-} image_region_t, com_image_t;
+} image_region_t;
 
 typedef struct faces_t {
     image_region_t ilist[_EFACE_COUNT];
-} faces_t, com_faces_t;
+} faces_t, faces_t;
 
 typedef struct image_holder_t {
     image_region_t faces[_EFACE_COUNT] = {
@@ -95,17 +95,26 @@ typedef struct image_holder_t {
 typedef struct visual_t {
     bool_t valid = _TRUTH;
     index_t layer = 0;
-} visual_t, com_visual_t;
+} visual_t, visual_t;
 
-/*** system ***/
+typedef struct ratio_t {
+    v1s_t x = RATIO_X, y = RATIO_Y;
+} ratio_t;
 
-typedef struct gfix_t {
-    ent_t ent_guis = entt::null;
-} gfix_t;
+typedef struct fonts_t {
+    image_region_t image = {
+        .index = _IMAGE_FONT_MAIN,
+        .coord = {0,0},
+        .sizes = {0x80,0x30},
+    };
+    cchar_t first = ' '; /* the first character in the image */
+    struct {
+        sizes_t sizes = {8,8}; /* glyph size */
+        pos2d_t steps = {0,0}; /* offsets from glyph to glyph */
+    } glyph; /* settings for every character */
+} fonts_t;
 
 /** datadef **/
-
-extern gfix_t gfix;
 
 /** getters **/
 
@@ -125,8 +134,6 @@ inline auto get_anchor_coord(
         0
     };
 }
-
-extern const direc_t&get_camera_direc();
 
 /** actions **/
 

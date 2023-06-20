@@ -64,26 +64,25 @@ void signal_t::call()
 
 /** datadef **/
 
-util_t util;
+timer_t timer;
 
 /** actions **/
 
 void util_loop()
 {
-    constexpr auto&timer = util.timer;
-    timer.was_mil = util.timer.now_mil;
+    timer.was_mil = timer.now_mil;
     timer.now_mil = glutGet(GLUT_ELAPSED_TIME);
-    timer.dif_mil = util.timer.now_mil - util.timer.was_mil;
+    timer.dif_mil = timer.now_mil - timer.was_mil;
     if (timer.dif_mil == 0) { timer.dif_mil = 1; }
     else if (timer.dif_mil < 0) { timer.dif_mil = -timer.dif_mil; }
     call_on_sec([](int was_sec, int now_sec, int dif_sec){
-        if (util.timer.dif_mil > 0)
+        if (timer.dif_mil > 0)
         {
-            util.timer.fps_num = 60'000 / util.timer.dif_mil;
-            util.timer.sig_sec.call();
+            timer.fps_num = 1'000 / timer.dif_mil;
+            timer.sig_sec.call();
         }
     });
-    util.timer.sig_upd.call();
+    timer.sig_upd.call();
 }
 
 _NAMESPACE_LEAVE
