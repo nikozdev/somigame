@@ -13,55 +13,6 @@ _NAMESPACE_ENTER
 
 /** typedef **/
 
-signal_t::signal_t()
-{
-}
-
-signal_t::~signal_t()
-{
-    for (auto&link : this->func_list)
-    { if (link) { delete link; } }
-}
-
-index_t signal_t::listen(func_t func)
-{
-    for (auto index = 0; index < func_list.size(); index++)
-    {
-        auto&link = this->func_list[index]; 
-        if (link == _NULL)
-        {
-            link = new func_t(func);
-            return index;
-        }
-    }
-    this->func_list.push_back(new func_t(func));
-    return this->func_list.size();
-}
-
-bool_t signal_t::forget(index_t index)
-{
-    if ((this->func_list.size() - 1) == index)
-    {
-        this->func_list.erase(this->func_list.begin() + index);
-        return true;
-    }
-    auto&link = this->func_list[index];
-    if (link == _NULL)
-    { return false; }
-    else
-    {
-        delete link;
-        link = _NULL;
-        return true;
-    }
-}
-
-void signal_t::call()
-{
-    for (auto&link : this->func_list)
-    { if (link) { (*link)(); } }
-}
-
 /** datadef **/
 
 timer_t timer;

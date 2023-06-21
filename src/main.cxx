@@ -7,7 +7,6 @@
 #include "ecos.hxx"
 #include "fsys.hxx"
 #include "gfix.hxx"
-#include "fsix.hxx"
 #include "game.hxx"
 
 #include <GL/glut.h>
@@ -23,10 +22,7 @@ _NAMESPACE_ENTER
 void main_loop()
 {
     util_loop();
-    fsix_loop();
-    call_on_mil([](int, int, int){
-        gfix_loop();
-    }, 16);
+    gfix_loop();
     game_loop();
 }
 
@@ -36,9 +32,8 @@ int main(int argc, char** argv)
     ecos_init();
     fsys_init();
     gfix_init();
-    fsix_init();
-    game_init();
     iput_init();
+    game_init();
     glutIdleFunc(main_loop);
     glutMainLoop();
     return _ERROR_NONE;

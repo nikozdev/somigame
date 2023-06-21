@@ -19,7 +19,7 @@ constexpr auto VIEW_SIZES_H = UNIT_SCALE_Y * RATIO_Y;
 
 constexpr auto GUIS_SIZES_X = UNIT_SCALE_X;
 constexpr auto GUIS_SIZES_Y = UNIT_SCALE_X;
-constexpr auto GUIS_LAYER = UNIT_COUNT_Z/2+1;
+constexpr auto GUIS_LAYER = 0xff;
 
 /** enumdef **/
 
@@ -36,7 +36,8 @@ typedef enum image_e : index_t {
     _IMAGE_META_NONE = 0x0,
     _IMAGE_META_TEST = 0x1,
     _IMAGE_META_LOGO,
-    _IMAGE_ENTT_HERO,
+    _IMAGE_GAME_PICK,
+    _IMAGE_GAME_HERO,
     _IMAGE_TILE_TEST,
     _IMAGE_FONT_TEST,
     _IMAGE_FONT_MAIN,
@@ -46,7 +47,7 @@ typedef enum image_e : index_t {
 /** typedef **/
 
 typedef struct color_t {
-    unsigned char value = 0u;
+    unsigned char v = 0u;
 } color_t, color_t;
 
 typedef struct image_origin_t {
@@ -60,7 +61,7 @@ typedef struct image_origin_t {
 typedef struct image_region_t {
     index_t index = _IMAGE_META_TEST;
     pos2d_t coord = { 0, 0 };
-    sizes_t sizes = { UNIT_SCALE_X, UNIT_SCALE_Y };
+    sizes_t sizes = { 0, 0 };
 } image_region_t;
 
 typedef struct faces_t {
@@ -114,7 +115,10 @@ typedef struct fonts_t {
     } glyph; /* settings for every character */
 } fonts_t;
 
-/** datadef **/
+typedef struct grid_t {
+    sizes_t cells{UNIT_SCALE_X,UNIT_SCALE_Y}; /* sizes of cells */
+    sizes_t tails{0,0}; /* trailing lines from both sides */
+} grid_t;
 
 /** getters **/
 
@@ -147,7 +151,10 @@ extern void load_image_from_value_into_index(const image_t&image, index_t index)
 
 extern void view_move(const pos3d_t&coord = {0,0,0});
 extern void view_goto(const pos3d_t&coord = {0,0,0});
+extern void view_goto_x(v1s_t gotox);
+extern void view_goto_y(v1s_t gotoy);
+extern void view_goto_z(v1s_t gotoz);
 extern void view_zoom(const scale_t&scale);
-extern void view_turn(bool lside = _TRUTH);
+extern void view_turn(const bool_t lside = _TRUTH);
 
 _NAMESPACE_LEAVE

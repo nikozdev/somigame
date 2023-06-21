@@ -5,7 +5,6 @@
 #include "head.hxx"
 #include "util.hxx"
 #include "gfix.hxx"
-#include "fsix.hxx"
 
 /* defines */
 
@@ -37,10 +36,6 @@ using com_ename_t = ename_t;
 using com_cstring_t = cstring_t;
 
 using com_coord_t = coord_t;
-using com_force_t = force_t;
-using com_frict_t = frict_t;
-using com_weigh_t = weigh_t;
-using com_mover_t = mover_t;
 using com_direc_t = direc_t;
 
 using com_sizes_t = sizes_t;
@@ -56,6 +51,7 @@ using com_color_t = color_t;
 using com_image_t = image_region_t;
 using com_faces_t = faces_t;
 using com_fonts_t = fonts_t;
+using com_grid_t = grid_t;
 
 /** datadef**/
 

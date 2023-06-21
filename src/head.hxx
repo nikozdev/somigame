@@ -10,6 +10,7 @@
 
 #include <array>
 #include <vector>
+#include <initializer_list>
 
 #include <string>
 #include <cstring>
@@ -67,6 +68,8 @@ _NAMESPACE_ENTER
 
 /** typedef **/
 
+using void_t = void;
+
 using bool_t = bool;
 using flag_t = bool_t;
 
@@ -112,15 +115,20 @@ using udata_t = ubyte_t*;
 using mdata_t = mbyte_t*;
 using msize_t = size_t;
 
+template <typename t_val_t>
+using t_array_t = std::vector<t_val_t>;
+template <typename t_val_t>
+using t_list2_t = std::list<t_val_t>;
+template <typename t_val_t>
+using t_ilist_t = std::initializer_list<t_val_t>;
+
+template <typename t_call_t>
+using t_func_t = std::function<t_call_t>;
+
 /** consdef **/
 
 constexpr v1s_t UNIT_SCALE_X = 0x010;
 constexpr v1s_t UNIT_SCALE_Y = 0x010;
-constexpr v1s_t UNIT_SCALE_Z = 0x001;
-constexpr v1s_t UNIT_COUNT_X = 0x100;
-constexpr v1s_t UNIT_COUNT_Y = 0x100;
-constexpr v1s_t UNIT_COUNT_Z = 0x100;
-constexpr v1s_t UNIT_COUNT = UNIT_COUNT_X*UNIT_COUNT_Y*UNIT_COUNT_Z;
 
 const size_t CSTRING_MSIZE = 0x100;
 

@@ -1,7 +1,7 @@
 # basic
 
 NAME:=somigame
-VNUM:=0xa0a2a2
+VNUM:=0xa0a2a3
 TYPE:=RUN
 
 # files

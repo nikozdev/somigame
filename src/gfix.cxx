@@ -3,7 +3,6 @@
 #include "gfix.hxx"
 #include "util.hxx"
 #include "iput.hxx"
-#include "fsix.hxx"
 #include "game.hxx"
 
 #include <GL/glut.h>
@@ -29,12 +28,13 @@ struct drawable_t
     coord_t  coord;
     heritage_t heritage;
 };
-using drawlist_t = std::vector<drawable_t>;
+using drawlist_t = t_array_t<drawable_t>;
 
 /** datadef **/
 
 ent_t ent_guis;
 ent_t ent_view;
+ent_t ent_grid;
 com_coord_t*coord_v;
 com_direc_t*direc_v;
 com_sizes_t*sizes_v;
@@ -146,7 +146,8 @@ void gfix_init()
         .mdata = &IMAGE_TEST_MDATA[0]
     }, _IMAGE_META_TEST);
     load_image_from_fpath_into_index("rsc/gfix/meta-logo.png", _IMAGE_META_LOGO);
-    load_image_from_fpath_into_index("rsc/gfix/entt-hero-ai-f1.png", _IMAGE_ENTT_HERO);
+    load_image_from_fpath_into_index("rsc/gfix/game-pick.png", _IMAGE_GAME_PICK);
+    load_image_from_fpath_into_index("rsc/gfix/game-hero-ai-f1.png", _IMAGE_GAME_HERO);
     load_image_from_fpath_into_index("rsc/gfix/tile-test-st-tmm.png", _IMAGE_TILE_TEST);
     load_image_from_fpath_into_index("rsc/gfix/font-main-8x8.png", _IMAGE_FONT_MAIN);
     if constexpr (_TRUTH)
@@ -352,26 +353,30 @@ void gfix_init()
             ecos.emplace<com_ename_t>(ent_quad, _ENAME_GUIS_RM_QUAD);
         }
     }
-    /* keybinds */
-    /** view **/
-    /*** goto ***/
-    key_bind_set(_KEY_MODE_VIEW, "gx", [](int narg){ view_goto({narg,coord_v->y}); });
-    key_bind_set(_KEY_MODE_VIEW, "gy", [](int narg){ view_goto({coord_v->x,narg}); });
-    /*** move ***/
-    key_bind_set(_KEY_MODE_VIEW, "a", [](int narg){ view_move({.x=(-1)*(get_num_sign(narg)+narg),.y=0}); });
-    key_bind_set(_KEY_MODE_VIEW, "d", [](int narg){ view_move({.x=(+1)*(get_num_sign(narg)+narg),.y=0}); });
-    key_bind_set(_KEY_MODE_VIEW, "s", [](int narg){ view_move({.x=0,.y=(-1)*(get_num_sign(narg)+narg)}); });
-    key_bind_set(_KEY_MODE_VIEW, "w", [](int narg){ view_move({.x=0,.y=(+1)*(get_num_sign(narg)+narg)}); });
-    key_bind_set(_KEY_MODE_VIEW, "e", [](int narg){ view_turn(_FALSE); });
-    key_bind_set(_KEY_MODE_VIEW, "q", [](int narg){ view_turn(_TRUTH); });
-    /*** zoom ***/
-    key_bind_set(_KEY_MODE_VIEW, "z", [](int narg){ view_zoom({.x=narg,.y=narg}); });
-    /** graphics **/
-    /*** mode ***/
-    /**** wire ****/
-    key_bind_set(_KEY_MODE_MAIN, "gmw", [](int narg){ glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); });
-    /**** fill ****/
-    key_bind_set(_KEY_MODE_MAIN, "gmf", [](int narg){ glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); });
+    if constexpr (_TRUTH)
+    { /* grid */
+        ent_grid = ecos.create();
+        ecos.emplace<com_family_t>(ent_grid);
+        ecos.emplace<com_visual_t>(ent_grid, _TRUTH, 0);
+        ecos.emplace<com_anchor_t>(ent_grid, RELPOS_MID, RELPOS_MID);
+        ecos.emplace<com_coord_t>(ent_grid, 0, 0, 0);
+        ecos.emplace<com_sizes_t>(ent_grid, TILE_SCALE_X * 3, TILE_SCALE_Y * 3);
+        ecos.emplace<com_scale_t>(ent_grid, 1, 1);
+        ecos.emplace<com_color_t>(ent_grid, 0x80);
+        ecos.emplace<com_ename_t>(ent_grid, _ENAME_GFIX_GRID);
+        ecos.emplace<com_grid_t>(ent_grid,
+            grid_t{
+                .cells = { TILE_SCALE_X, TILE_SCALE_Y },
+                .tails = { TILE_SCALE_X, TILE_SCALE_Y },
+            }
+        );
+        if constexpr (_TRUTH)
+        { /* hero */
+            auto ent_hero = get_by_ename({_ENAME_GAME_HERO});
+            if (ecos.valid(ent_hero))
+            { set_ancestor(ent_grid, ent_hero); }
+        } /* hero */
+    } /* grid */
 }
 
 /*** drawing ***/
@@ -383,15 +388,52 @@ static void draw_init()
 extern void proc_list(drawlist_t&drawlist);
 void draw_unit(drawable_t&drawable)
 {
+    bool can_draw = _TRUTH;
     auto&entity = drawable.entity;
     auto&heritage = drawable.heritage;
     /* props */
     auto coord_e = drawable.coord;
     auto&coord_a = heritage.coord;
-    if (ecos.try_get<com_tile_t>(entity))
-    { coord_e.y += UNIT_SCALE_Y * (coord_e.z - coord_v->z); }
-    auto color_e = color_t{ .value = 0xff };
+    coord_e.z += coord_a.z;
+    auto color_e = color_t{ .v = 0xff };
     if (auto*temp = ecos.try_get<com_color_t>(entity)) { color_e =*temp; }
+    if (ecos.try_get<com_tile_t>(entity))
+    {
+        auto dif_z = coord_e.z - coord_v->z;
+        auto dif_y = coord_e.y - coord_v->y;
+        dif_y += TILE_SCALE_Y * dif_z;
+        dif_y = std::abs(dif_y);
+        auto dif_x = coord_e.x - coord_v->x;
+        dif_x = std::abs(dif_x);
+        auto rng_x = TILE_SCALE_X * 2;
+        auto rng_y = TILE_SCALE_Y * 2;
+        auto coord_f = from_coord_into_tile_coord(coord_e);
+        coord_f.y -= 1;
+        coord_f.z += 1;
+        if (vet_tile_from_tile_coord(coord_f))
+        { can_draw = _FALSE; }
+        if (dif_z == 0 && ((_FALSE
+        ) || (_TRUTH
+        && dif_x <= (rng_x)
+        && dif_y <= (rng_y - TILE_SCALE_Y)
+        ) || (_TRUTH
+        && dif_x <= (rng_x - TILE_SCALE_X)
+        && dif_y <= (rng_y)
+        ))) { can_draw = _TRUTH; }
+        else if (dif_z > 0)
+        {
+            if ((_FALSE
+            ) || (_TRUTH
+            && dif_x <= (rng_x)
+            && dif_y <= (rng_y - TILE_SCALE_Y*1)
+            ) || (_TRUTH
+            && dif_x <= (rng_x - TILE_SCALE_X*1)
+            && dif_y <= (rng_y)
+            )) { can_draw = _FALSE; }
+        }
+        coord_e.y += TILE_SCALE_Y * dif_z;
+        color_e.v /= std::abs(get_num_sign(dif_z)+dif_z);
+    }
     auto&sizes_a = heritage.sizes;
     auto sizes_e = sizes_t{ .w = UNIT_SCALE_X, .h = UNIT_SCALE_Y };
     if (auto*temp = ecos.try_get<com_sizes_t>(entity)) { sizes_e =*temp; }
@@ -435,7 +477,7 @@ void draw_unit(drawable_t&drawable)
     coord_st += (sizes_e.h * scale_e.y * (RELPOS_MAX - anchor_e.y)) / RELPOS_DIV;
     coord_e.x -= (sizes_e.w * scale_e.x * anchor_e.x) / RELPOS_DIV;
     coord_e.y -= (sizes_e.h * scale_e.y * anchor_e.y) / RELPOS_DIV;
-    if ((_FALSE
+    if (can_draw && ((_FALSE
     ) || (_TRUTH
     && ((coord_sl <= recta_v->sr) && (coord_sb <= recta_v->st))
     && ((coord_sl >= recta_v->sl) && (coord_sb >= recta_v->sb))
@@ -454,8 +496,8 @@ void draw_unit(drawable_t&drawable)
     ) || (_TRUTH
     && ((coord_sb <= recta_v->sb) && (coord_st >= recta_v->st))
     && ((coord_sl >= recta_v->sl) || (coord_sr <= recta_v->sr))
-    )) { /* draw */
-        glColor3ub(color_e.value, color_e.value, color_e.value);
+    ))) { /* draw */
+        glColor3ub(color_e.v, color_e.v, color_e.v);
         auto*image = ecos.try_get<com_image_t>(entity);
         if (auto*faces = ecos.try_get<com_faces_t>(entity))
         {
@@ -482,13 +524,13 @@ void draw_unit(drawable_t&drawable)
         }
         if (image)
         {
-            auto image_ecosion = *image;
-            auto image_index = image_ecosion.index;
+            auto image_region = *image;
+            auto image_index = image_region.index;
             auto image_glint = 0u;
-            auto image_sx = image_ecosion.coord.x;
-            auto image_sy = image_ecosion.coord.y;
-            auto image_uw = image_ecosion.sizes.w;
-            auto image_uh = image_ecosion.sizes.h;
+            auto image_sx = image_region.coord.x;
+            auto image_sy = image_region.coord.y;
+            auto image_uw = image_region.sizes.w;
+            auto image_uh = image_region.sizes.h;
             auto image_fl = static_cast<v1f_t>(image_sx);
             auto image_fr = static_cast<v1f_t>(image_uw) + image_fl;
             auto image_fb = static_cast<v1f_t>(image_sy);
@@ -639,6 +681,21 @@ void draw_unit(drawable_t&drawable)
             glVertex2i(label_sl, label_st);
             glEnd();
         }
+        if (auto*grid = ecos.try_get<grid_t>(entity))
+        {
+            auto cells = grid->cells;
+            auto tails = grid->tails;
+            glBegin(GL_LINES);
+            auto fromy = coord_sb - tails.h;
+            auto intoy = coord_st + tails.h;
+            for (auto stepx = coord_sl; stepx <= coord_sr; stepx += cells.w)
+            { glVertex2i(stepx, fromy); glVertex2i(stepx, intoy); }
+            auto fromx = coord_sl - tails.w;
+            auto intox = coord_sr + tails.w;
+            for (auto stepy = coord_sb; stepy <= coord_st; stepy += cells.h)
+            { glVertex2i(fromx, stepy); glVertex2i(intox, stepy); }
+            glEnd();
+        }
     }
     /* hierarchy */
     if (auto*family = ecos.try_get<com_family_t>(drawable.entity))
@@ -705,8 +762,10 @@ void gfix_loop()
         memset(cstring.mdata, '\0', cstring.msize);
         std::snprintf(
             cstring.mdata, cstring.msize - 1,
-            "mode=%s;%c%s(%+d)x(%d)",
-            get_key_mode_name(),
+            "mode=%s;acts=%08d;"
+            "%c"
+            "%s(%+d)x(%d)",
+            get_key_mode_name(), get_action_count(),
             '\n',
             &get_key_line()[0], get_key_narg_sign(), get_key_narg()
         );
@@ -719,11 +778,11 @@ void gfix_loop()
             cstring.mdata, cstring.msize - 1,
             "now=%03zu.%03zu;fps=%05zu;"
             "%c"
-            "p(x%+04iy%+04i)s(x%+04iy%+04i)d(x%+1dy%+1d)"
+            "p(x%+04iy%+04iz%+04i)s(x%+04iy%+04i)d(x%+1dy%+1d)"
             "%c",
             (timer.now_mil / 1000) % 1000, timer.now_mil % 1000, timer.fps_num,
             '\n',
-            coord_v->x, coord_v->y,
+            coord_v->x, coord_v->y, coord_v->z,
             scale_v->x, scale_v->y,
             direc_v->x, direc_v->y,
             '\0'
@@ -754,56 +813,23 @@ void gfix_loop()
         proc_list(drawlist);
     }
     if constexpr (_TRUTH)
-    { /* drawing the tile grid */
-        glColor3ub(0x80, 0x80, 0x80);
-        glBegin(GL_LINES);
-        auto ent_hero = get_by_ename({_ENAME_ENTT_HERO});
-        auto anchor_h = ecos.get<com_anchor_t>(ent_hero);
-        auto coord_h = ecos.get<com_coord_t>(ent_hero);
-        auto sizes_h = ecos.get<com_sizes_t>(ent_hero);
-        auto coord_a = get_anchor_coord(anchor_h, sizes_h);
-        coord_h.x += get_anchor_coord(anchor_h.x, sizes_h.w, 1);
-        coord_h.y += get_anchor_coord(anchor_h.y, sizes_h.h, 1);
-        auto halfx = RATIO_X / 4;
-        auto halfy = RATIO_Y / 4;
-        halfx = std::min(halfx, halfy);
-        halfy = std::min(halfy, halfx);
-        auto stepx = coord_h.x / UNIT_SCALE_X;
-        auto stepy = coord_h.y / UNIT_SCALE_Y;
-        for (auto ix = -halfx; ix <= +halfx; ix++)
-        {
-            auto fromx = (stepx + ix) * UNIT_SCALE_X - coord_a.x;
-            glVertex2i(fromx, (stepy - halfy) * UNIT_SCALE_Y - coord_a.y);
-            glVertex2i(fromx, (stepy + halfy) * UNIT_SCALE_Y - coord_a.y);
-        }
-        for (auto iy = -halfy; iy <= +halfy; iy++)
-        {
-            auto fromy = (stepy + iy) * UNIT_SCALE_Y - coord_a.y;
-            glVertex2i((stepx - halfx) * UNIT_SCALE_X, fromy);
-            glVertex2i((stepx + halfx) * UNIT_SCALE_X, fromy);
-        }
-        glEnd();
-    }
-    if constexpr (_TRUTH)
     { /* finish the frame */
         glutPostRedisplay();
     }
     if constexpr (_TRUTH)
-    { /* camera-to-hero adjustment */
-        if (get_key_mode() == _KEY_MODE_VIEW)
+    { /* to-hero adjustment */
+        auto ent_hero = get_by_ename({_ENAME_GAME_HERO});
+        auto anchor_h = ecos.get<com_anchor_t>(ent_hero);
+        auto coord_h = ecos.get<com_coord_t>(ent_hero);
+        auto sizes_h = ecos.get<com_sizes_t>(ent_hero);
+        auto scale_h = ecos.get<com_scale_t>(ent_hero);
+        if (get_key_mode() != _KEY_MODE_VIEW)
         {
-        }
-        else
-        {
-            auto ent_hero = get_by_ename({_ENAME_ENTT_HERO});
-            auto anchor_h = ecos.get<com_anchor_t>(ent_hero);
-            auto coord_h = ecos.get<com_coord_t>(ent_hero);
-            auto force_h = ecos.get<com_force_t>(ent_hero);
-            auto sizes_h = ecos.get<com_sizes_t>(ent_hero);
-            auto scale_h = ecos.get<com_scale_t>(ent_hero);
             *coord_v = coord_h;
-            coord_v->x += get_anchor_coord(anchor_h.x, sizes_h.w, scale_h.x);
-            coord_v->y += get_anchor_coord(anchor_h.y, sizes_h.h, scale_h.y);
+            /*
+            coord_v->x -= get_anchor_coord(anchor_h.x, sizes_h.w, scale_h.x);
+            coord_v->y -= get_anchor_coord(anchor_h.y, sizes_h.h, scale_h.y);
+            */
         }
     }
 }
@@ -862,15 +888,27 @@ void load_image_from_value_into_index(const image_t&image, index_t index)
 
 void view_goto(const coord_t&coord)
 {
-    coord_v->x = (coord.x + UNIT_COUNT_X/2) % UNIT_COUNT_X;
-    coord_v->y = (coord.y + UNIT_COUNT_Y/2) % UNIT_COUNT_Y;
-    coord_v->z = (coord.z + UNIT_COUNT_Z/2) % UNIT_COUNT_Z;
+    coord_v->x = (coord.x + TILE_COUNT_X/2) % TILE_COUNT_X;
+    coord_v->y = (coord.y + TILE_COUNT_Y/2) % TILE_COUNT_Y;
+    coord_v->z = (coord.z + TILE_COUNT_Z/2) % TILE_COUNT_Z;
+}
+void view_goto_x(v1s_t gotox)
+{
+    coord_v->x = (gotox + TILE_COUNT_X/2) % TILE_COUNT_X;
+}
+void view_goto_y(v1s_t gotoy)
+{
+    coord_v->y = (gotoy + TILE_COUNT_Y/2) % TILE_COUNT_Y;
+}
+void view_goto_z(v1s_t gotoz)
+{
+    coord_v->z = (gotoz + TILE_COUNT_Z/2) % TILE_COUNT_Z;
 }
 
 void view_move(const coord_t&coord) {
     view_goto({
-        .x = coord.x * (UNIT_SCALE_X * scale_v->x),
-        .y = coord.y * (UNIT_SCALE_Y * scale_v->y),
+        .x = coord.x * (TILE_SCALE_X * scale_v->x),
+        .y = coord.y * (TILE_SCALE_Y * scale_v->y),
         .z = coord.z,
     });
 }
@@ -897,7 +935,7 @@ void view_zoom(const scale_t&scale)
     scale_v->y = std::clamp(scale_v->y, 1, 2 << 16);
 }
 
-void view_turn(bool_t lside)
+void view_turn(const bool_t lside)
 {
     *direc_v = get_vec_turn(*direc_v, lside);
 }

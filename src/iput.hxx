@@ -3,6 +3,7 @@
 /* headers */
 
 #include "head.hxx"
+#include "util.hxx"
 
 /* defines */
 
@@ -14,8 +15,9 @@ _NAMESPACE_ENTER
 
 typedef enum key_mode_e {
     _KEY_MODE_MAIN = 0x0,
-    _KEY_MODE_HERO,
     _KEY_MODE_VIEW,
+    _KEY_MODE_HERO,
+    _KEY_MODE_PICK,
     _KEY_MODE_COUNT
 } key_mode_e;
 
@@ -24,7 +26,7 @@ typedef void(*key_func_t)(int narg);
 typedef char key_code_t;
 typedef const char* key_mesg_t;
 typedef struct key_bind_t key_bind_t;
-typedef std::vector<key_bind_t*> key_list_t;
+typedef t_array_t<key_bind_t*> key_list_t;
 typedef const char* key_path_t;
 
 typedef struct key_bind_t {
@@ -34,6 +36,9 @@ typedef struct key_bind_t {
 } key_bind_t;
 
 /** datadef **/
+
+using key_mode_set_signal_t = t_signal_t<key_mode_e>;
+extern key_mode_set_signal_t key_mode_set_signal;
 
 /** consdef **/
 
@@ -55,7 +60,5 @@ extern bool key_bind_set(key_mode_e mode, key_path_t path, key_func_t func);
 /** actions **/
 
 extern void iput_init();
-
-extern void proc_key_board(unsigned char code, int mouse_x, int mouse_y);
 
 _NAMESPACE_LEAVE

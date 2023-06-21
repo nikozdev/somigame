@@ -15,7 +15,10 @@ _NAMESPACE_ENTER
 
 typedef enum ename_e {
     _ENAME_META_NONE = 0x0,
-    _ENAME_ENTT_HERO = 0x1,
+    _ENAME_GAME,
+    _ENAME_GAME_HERO,
+    _ENAME_GAME_PICK,
+    _ENAME_GFIX_GRID,
     _ENAME_GFIX_VIEW,
     _ENAME_GUIS,
     _ENAME_GUIS_MM_QUAD,
@@ -27,27 +30,99 @@ typedef enum ename_e {
     _ENAME_GUIS_RB_QUAD, _ENAME_GUIS_RB_TEXT, _ENAME_GUIS_RB_LOGO,
     _ENAME_GUIS_LT_QUAD, _ENAME_GUIS_LT_TEXT, _ENAME_GUIS_LT_LOGO,
     _ENAME_GUIS_RT_QUAD, _ENAME_GUIS_RT_TEXT, _ENAME_GUIS_RT_LOGO,
+    _ENAME_COUNT
 } ename_e;
 
 /*** classes ***/
 
-class signal_t
+template <typename...args_t>
+class t_signal_t
 {
 public: /* typedef */
-    using this_t = signal_t;
-    using func_t = std::function<void(void)>;
-    using func_list_t = std::vector<func_t*>;
-    using link_t = func_t*;
+    using func_t = std::function<void(args_t...)>;
+    using signal_t = t_signal_t<args_t...>;
+    class link_t
+    {
+    public: /* codetor */
+        inline link_t(t_signal_t& signal, index_t index, const func_t&func)
+            : signal(&signal), index(index), func(func) {}
+        inline link_t(const link_t&copy)
+            : signal(copy.signal), index(copy.index), func(copy.func) {}
+        inline link_t(link_t&&copy)
+            : signal(copy.signal), index(copy.index), func(copy.func) {}
+        inline ~link_t() {}
+    public: /* vetters */
+        inline bool vet()
+        { return this->signal && this->index && this->func; }
+    public: /* actions */
+        inline bool kill()
+        {
+            if (this->vet())
+            {
+                if (this->signal->vet_link(this->index))
+                { this->signal->drop(this->index); }
+                this->signal = _NULL;
+                this->index = -1;
+                return _TRUTH;
+            }
+            else { return _FALSE; }
+        }
+    public: /* symbols */
+        inline link_t&operator=(link_t&&copy)
+        { std::memmove(this, &copy, sizeof(link_t)); }
+        inline link_t&operator=(const link_t&copy)
+        { std::memcpy(this, &copy, sizeof(link_t)); }
+    private: /* datadef */
+        signal_t*signal;
+        index_t index;
+        func_t func;
+        friend signal_t;
+    };
+    using link_list_t = t_array_t<link_t>;
 public: /* codetor */
-    signal_t();
-    ~signal_t();
-public: /* setters */
-    index_t listen(func_t);
-    bool_t forget(index_t);
+    t_signal_t() {}
+    ~t_signal_t() { this->kill(); }
+public: /* vetters */
+    inline bool_t vet_link(index_t index)
+    { return this->link_list.size() < index; }
 public: /* actions */
-    void call();
+    inline link_t&bind(const func_t&func)
+    {
+        auto index = this->link_list.size();
+        this->link_list.push_back({*this, index, func});
+        return link_list.back();
+    }
+    inline bool_t kill(link_t&link) { return link.kill(); }
+    inline bool_t kill()
+    {
+        if (this->link_list.size() > 0)
+        {
+            auto head = this->link_list.begin();
+            auto tail = this->link_list.end();
+            while (tail != head)
+            { tail--; if (tail->kill() != _FALSE) { return _FALSE; } }
+            return _TRUTH;
+        }
+        else { return _FALSE; }
+    }
+    inline bool_t drop(index_t index)
+    {
+        if (vet_link(index))
+        {
+            this->link_list.erase(this->link_list.begin() + index);
+            return _TRUTH;
+        }
+        else { return _FALSE; }
+    }
+    inline void call(args_t...args)
+    {
+        auto head = this->link_list.begin();
+        auto tail = this->link_list.end();
+        while (tail != head)
+        { tail--; tail->func(std::forward<args_t&&...>(args)...); }
+    }
 private:
-    func_list_t func_list;
+    link_list_t link_list;
 };
 
 typedef struct timer_t {
@@ -55,23 +130,23 @@ typedef struct timer_t {
     size_t was_mil = 0; /* last frame milisecond */
     size_t now_mil = 0; /* current frame milisecond */
     size_t fps_num = 0; /* frames per second number */
-    signal_t sig_sec; /* call on every second */
-    signal_t sig_upd; /* call on every update */
+    t_signal_t<> sig_sec; /* call on every second */
+    t_signal_t<> sig_upd; /* call on every update */
 } timer_t;
 
 /*** struct ***/
 
 typedef struct iname_t {
-    const index_t value = 0;
+    const index_t i = 0;
 } iname_t;
 
 typedef struct sname_t {
-    const msize_t msize = CSTRING_MSIZE;
-    const mbyte_t value[CSTRING_MSIZE];
+    const msize_t l = CSTRING_MSIZE - 1;
+    const mbyte_t s[CSTRING_MSIZE];
 } sname_t;
 
 typedef struct ename_t {
-    const ename_e value = _ENAME_META_NONE;
+    const ename_e e = _ENAME_META_NONE;
 } ename_t;
 
 typedef struct cstring_t {

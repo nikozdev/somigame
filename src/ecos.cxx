@@ -12,10 +12,23 @@ _NAMESPACE_ENTER
 
 ecos_t ecos;
 
+using ename_table_t = std::array<ent_t, _ENAME_COUNT>;
+ename_table_t ename_table;
 /** actions **/
 
 void ecos_init()
 {
+    for (auto&ent:ename_table) { ent = entt::null; }
+    ecos.on_construct<com_ename_t>().connect<[](ecos_t&ecos, entt::entity ent)
+    {
+        auto&ename = ecos.get<com_ename_t>(ent);
+        ename_table[ename.e] = ent;
+    }>();
+    ecos.on_destroy<com_ename_t>().connect<[](ecos_t&ecos, entt::entity ent)
+    {
+        auto&ename = ecos.get<com_ename_t>(ent);
+        ename_table[ename.e] = entt::null;
+    }>();
     ecos.on_construct<com_family_t>().connect<[](ecos_t&ecos, entt::entity ent)
     {
         auto*family_e =&ecos.get<com_family_t>(ent);
@@ -48,22 +61,20 @@ void ecos_init()
 
 /*** getters ***/
 
-ent_t get_by_ename(const ename_t&value)
+ent_t get_by_ename(const ename_t&ename)
 {
-    for (auto&&[ent,ename] : ecos.view<com_ename_t>().each())
-    { if (ename.value == value.value) { return ent; } }
+    return ename_table[ename.e];
+}
+ent_t get_by_iname(const iname_t&iname)
+{
+    for (auto&&[ent,iname_e] : ecos.view<com_iname_t>().each())
+    { if (iname_e.i == iname.i) { return ent; } }
     return entt::null;
 }
-ent_t get_by_iname(const iname_t&value)
-{
-    for (auto&&[ent,iname] : ecos.view<com_iname_t>().each())
-    { if (iname.value == value.value) { return ent; } }
-    return entt::null;
-}
-ent_t get_by_sname(const sname_t&value)
+ent_t get_by_sname(const sname_t&sname)
 {
     for (auto&&[ent,sname] : ecos.view<com_sname_t>().each())
-    { if (std::strcmp(sname.value, value.value) == 0) { return ent; } }
+    { if (std::strcmp(sname.s, sname.s) == 0) { return ent; } }
     return entt::null;
 }
 
@@ -100,13 +111,16 @@ ent_t get_siblingr(ent_t ent)
 bool vet_ancestor(ent_t ent, ent_t ancestor)
 {
     if (ecos.valid(ent) == _FALSE) { return _FALSE; }
+    if (ecos.try_get<com_family_t>(ent) == _NULL) { return _FALSE; }
     auto*family_e =&ecos.get<com_family_t>(ent);
     return (family_e->ancestor == ancestor);
 }
 bool vet_ancestry(ent_t ent, ent_t ancestry)
 {
     if (ecos.valid(ent) == _FALSE) { return _FALSE; }
+    if (ecos.try_get<com_family_t>(ent) == _NULL) { return _FALSE; }
     if (ecos.valid(ancestry) == _FALSE) { return _FALSE; }
+    if (ecos.try_get<com_family_t>(ancestry) == _NULL) { return _FALSE; }
     auto*family_e =&ecos.get<com_family_t>(ent);
     auto ancestor = ancestry;
     while (ecos.valid(ancestor))
@@ -124,7 +138,9 @@ bool vet_siblings(ent_t ent, ent_t siblingl, ent_t siblingr)
 bool vet_siblingl(ent_t ent, ent_t siblingl)
 {
     if (ecos.valid(ent) == _FALSE) { return _FALSE; }
+    if (ecos.try_get<com_family_t>(ent) == _NULL) { return _FALSE; }
     if (ecos.valid(siblingl) == _FALSE) { return _FALSE; }
+    if (ecos.try_get<com_family_t>(siblingl) == _NULL) { return _FALSE; }
     auto*family_e =&ecos.get<com_family_t>(ent);
     if (family_e->siblingl == siblingl) { return _TRUTH; }
     auto temp = family_e->siblingl;
@@ -138,7 +154,9 @@ bool vet_siblingl(ent_t ent, ent_t siblingl)
 bool vet_siblingr(ent_t ent, ent_t siblingr)
 {
     if (ecos.valid(ent) == _FALSE) { return _FALSE; }
+    if (ecos.try_get<com_family_t>(ent) == _NULL) { return _FALSE; }
     if (ecos.valid(siblingr) == _FALSE) { return _FALSE; }
+    if (ecos.try_get<com_family_t>(siblingr) == _NULL) { return _FALSE; }
     auto*family_e =&ecos.get<com_family_t>(ent);
     if (family_e->siblingr == siblingr) { return _TRUTH; }
     auto temp = family_e->siblingr;
@@ -153,19 +171,24 @@ bool vet_siblingr(ent_t ent, ent_t siblingr)
 bool vet_follower(ent_t ent, ent_t follower)
 {
     if (ecos.valid(ent) == _FALSE) { return _FALSE; }
+    if (ecos.try_get<com_family_t>(ent) == _NULL) { return _FALSE; }
     return ecos.get<com_family_t>(ent).follower == follower;
 }
 bool vet_children(ent_t ent, ent_t children)
 {
     if (ecos.valid(ent) == _FALSE) { return _FALSE; }
+    if (ecos.try_get<com_family_t>(ent) == _NULL) { return _FALSE; }
     if (ecos.valid(children) == _FALSE) { return _FALSE; }
+    if (ecos.try_get<com_family_t>(children) == _NULL) { return _FALSE; }
     if (vet_follower(ent, children)) { return _TRUTH; }
     else { return vet_siblings(ecos.get<com_family_t>(ent).follower, children); }
 }
 bool vet_inherits(ent_t ent, ent_t inherits)
 {
     if (ecos.valid(ent) == _FALSE) { return _FALSE; }
+    if (ecos.try_get<com_family_t>(ent) == _NULL) { return _FALSE; }
     if (ecos.valid(inherits) == _FALSE) { return _FALSE; }
+    if (ecos.try_get<com_family_t>(inherits) == _NULL) { return _FALSE; }
     auto follower = ent;
     auto*family_f =&ecos.get<com_family_t>(follower);
     while(ecos.valid(family_f->follower))
@@ -185,6 +208,7 @@ bool set_ancestor(ent_t ent, ent_t ancestor)
     if (vet_ancestor(ent, ancestor)) { return _FALSE; }
     if (vet_follower(ent, ancestor)) { return _FALSE; }
     if (ecos.valid(ent) == _FALSE) { return _FALSE; }
+    if (ecos.try_get<com_family_t>(ent) == _NULL) { return _FALSE; }
     auto*family_e =&ecos.get<com_family_t>(ent);
     if (ecos.valid(family_e->ancestor))
     {
@@ -231,6 +255,7 @@ bool set_follower(ent_t ent, ent_t follower)
     if (ent == follower) { return _FALSE; }
     if (vet_ancestry(ent, follower)) { return _FALSE; }
     if (ecos.valid(ent) == _FALSE) { return _FALSE; }
+    if (ecos.try_get<com_family_t>(ent) == _NULL) { return _FALSE; }
     auto*family_e =&ecos.get<com_family_t>(ent);
     if (ecos.valid(family_e->follower))
     {
