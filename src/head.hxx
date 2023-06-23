@@ -18,6 +18,8 @@
 #include <cmath>
 #include <cstdint>
 
+#include <csignal>
+
 #include "../lib/entt/entt.hpp"
 
 /* defines */
@@ -79,6 +81,52 @@
 /** debug **/
 
 #define _ERROR_NONE 0
+
+#define _FUNC_NAME __FUNCTION__
+#define _FUNC_SIGN __PRETTY_FUNCTION__
+
+#define _OLOG_NAME olog
+#define _OLOG_STR "olog"
+#define _OPUT( args... ) fprintf( stdout, ##args );
+#define _OLOG( mesg, args... ) ({ \
+    _OPUT( \
+        "from: " _OLOG_STR " | " \
+        "file: " _FILE_STR " | " \
+        "line: " "%d" " | " \
+        "mesg: " _ENDL_STR \
+        "" mesg "" _ENDL_STR \
+        , __LINE__, ##args ) \
+})
+
+#define _ELOG_NAME elog
+#define _ELOG_STR "elog"
+#define _EPUT( args... ) fprintf( stderr, ##args );
+#define _ELOG( mesg, args... ) ({ \
+    _EPUT( \
+        "from: " _ELOG_STR " | " \
+        "file: " _FILE_STR " | " \
+        "line: " "%d" " | " \
+        "mesg: " _ENDL_STR \
+        "" mesg "" _ENDL_STR \
+        , _LINE_NUM, ##args ) \
+})
+
+#ifdef _CONF_WORK
+#   ifdef SIGINT
+#       define _BREAK() ({ raise(SIGINT); })
+#   else
+#       define _BREAK() ({ _EPUT( _BELL_STR ); /* system("pause"); */ })
+#   endif /* SIGINT */
+#else
+#   define _BREAK() ({})
+#endif
+
+#define _ERROR( mesg, code, actn ) \
+    ({ _ELOG( mesg ); _BREAK(); ecode = code; actn; })
+#define _EFNOT( expr, mesg, actn ) \
+    ({ if ( (expr) == 0 ) { _ERROR( mesg, 1, actn ); } })
+#define _PCALL( exec, mesg, actn ) \
+    ({ exec; _EFNOT( ecode == _ZERO, mesg, ({ actn; ecode = _ZERO; }) ); })
 
 /* content */
 
@@ -162,5 +210,9 @@ constexpr v1s_t SCALE_DIV = 64;
 constexpr v1s_t SCALE_MID = 0x0;
 constexpr v1s_t SCALE_MIN = -64;
 constexpr v1s_t SCALE_MAX = +64;
+
+/** datadef **/
+
+static inline size_t ecode = 0;
 
 _NAMESPACE_LEAVE

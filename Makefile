@@ -1,8 +1,9 @@
 # basic
 
 NAME:=somigame
-VNUM:=0xa0a2a4
+VNUM:=0xa0a2a5
 TYPE:=RUN
+CONF:=WORK
 
 # files
 
@@ -76,12 +77,19 @@ LIBLIN:=$(wildcard $(LIBLIN))
 
 CMAKER:= $(shell which g++) -c -o
 CFLAGS+= -std=c++20
+ifeq ($(CONF),)
+else ifeq ($(CONF),WORK)
 CFLAGS+= -O0 -g
+else ifeq ($(CONF),PLAY)
+CFLAGS+= -O3
+endif
 CFLAGS+= -Wno-error=narrowing -Wno-narrowing
+CFLAGS+= -Wno-class-conversion
 CFLAGS+= -fpermissive
 CFLAGS+= -D_NAME=$(NAME) -D_NAME_STR=\"$(NAME)\"
 CFLAGS+= -D_VNUM=$(VNUM) -D_VNUM_STR=\"$(VNUM)\"
 CFLAGS+= -D_TYPE_$(TYPE) -D_TYPE_STR=\"$(TYPE)\"
+CFLAGS+= -D_CONF_$(CONF) -D_CONF_STR=\"$(CONF)\"
 CFLAGS+= $(shell pkg-config --cflags opengl gl glu glut)
 CFLAGS+= $(patsubst %,-I$(LIBDIR)/%/src,$(LIBUSE))
 
@@ -172,6 +180,7 @@ print: print-head
 	$(info [NAME]=$(NAME))
 	$(info [VNUM]=$(VNUM))
 	$(info [TYPE]=$(TYPE))
+	$(info [CONF]=$(CONF))
 	$(info [ARGV]=$(ARGV))
 	$(info [=[files]=])
 	$(info [==[suffix]==])

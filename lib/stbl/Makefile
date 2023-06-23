@@ -1,8 +1,9 @@
 # basic
 
 NAME:=stbl
-VNUM:=0xa0a0a0
+VNUM:=0xa0a0a1
 TYPE:=RUN
+CONF:=PLAY
 
 # files
 
@@ -73,11 +74,17 @@ LIBSET:=$(patsubst $(LIBDIR)/%,%,$(wildcard $(LIBDIR)/*))
 
 CMAKER:= $(shell which g++) -c -o
 CFLAGS+= -std=c++20
+ifeq ($(CONF),)
+else ifeq ($(CONF),WORK)
 CFLAGS+= -O0 -g
+else ifeq ($(CONF),PLAY)
+CFLAGS+= -O3
+endif
 CFLAGS+= -Wno-initializer-overrides
 CFLAGS+= -D_NAME=$(NAME) -D_NAME_STR=\"$(NAME)\"
 CFLAGS+= -D_VNUM=$(VNUM) -D_VNUM_STR=\"$(VNUM)\"
 CFLAGS+= -D_TYPE_$(TYPE) -D_TYPE_STR=\"$(TYPE)\"
+CFLAGS+= -D_CONF_$(CONF) -D_CONF_STR=\"$(CONF)\"
 CFLAGS+= $(patsubst $(LIBDIR)/%,-I$(LIBDIR)/%/src,$(LIBSET))
 
 ## linker
@@ -166,6 +173,7 @@ print: print-head
 	$(info [NAME]=$(NAME))
 	$(info [VNUM]=$(VNUM))
 	$(info [TYPE]=$(TYPE))
+	$(info [CONF]=$(CONF))
 	$(info [ARGV]=$(ARGV))
 	$(info [=[files]=])
 	$(info [==[suffix]==])

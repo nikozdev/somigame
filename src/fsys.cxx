@@ -9,8 +9,6 @@ _NAMESPACE_ENTER
 
 /** datadef **/
 
-fsys_t fsys;
-
 /** actions **/
 
 void fsys_init()

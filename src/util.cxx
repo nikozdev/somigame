@@ -1,7 +1,6 @@
 /* headers */
 
 #include "util.hxx"
-#include "gfix.hxx"
 
 #include <GL/glut.h>
 
@@ -16,8 +15,6 @@ _NAMESPACE_ENTER
 /** datadef **/
 
 timer_t timer;
-
-index_t ecode = 0;
 
 /** actions **/
 

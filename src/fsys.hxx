@@ -2,21 +2,35 @@
 
 #include "head.hxx"
 
+#include <experimental/bits/fs_fwd.h>
+#include <experimental/bits/fs_path.h>
+#include <experimental/bits/fs_dir.h>
+#include <experimental/bits/fs_ops.h>
+
+/* defines */
+
+#define _NAMESPACE_ENTER_FSYS namespace fsys {
+#define _NAMESPACE_LEAVE_FSYS }
+
 /* content */
 
 _NAMESPACE_ENTER
+_NAMESPACE_ENTER_FSYS
+
+namespace fstd = std::experimental::filesystem;
+
+using fpaf_t = fstd::path;
+using fdir_info_t = fstd::directory_entry;
+using fdir_iter_t = fstd::directory_iterator;
+using size_info_t = fstd::space_info;
 
 /** typedef **/
 
-typedef struct fsys_t {
-} fsys_t;
-
 /** datadef **/
-
-extern fsys_t fsys;
 
 /** actions **/
 
 extern void fsys_init();
 
+_NAMESPACE_LEAVE_FSYS
 _NAMESPACE_LEAVE

@@ -1,6 +1,7 @@
 /* headers */
 
 #include "iput.hxx"
+#include "memo.hxx"
 #include "gfix.hxx"
 #include "ecos.hxx"
 #include "game.hxx"
@@ -75,7 +76,7 @@ bool key_bind_set(key_mode_e mode, key_path_t path, key_func_t func)
             }
             else
             {
-                bind = new key_bind_t;
+                memo::owner->new_one<key_bind_t>(bind );
                 (*list)[code] = bind;
             }
             list =&bind->list;

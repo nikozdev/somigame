@@ -3,58 +3,15 @@
 /* headers */
 
 #include "head.hxx"
+#include "memo.hxx"
+
+#include <ctime>
 
 /* defines */
-
-#define _FUNC_NAME __FUNCTION__
-#define _FUNC_SIGN __PRETTY_FUNCTION__
-
-#define _OLOG_NAME olog
-#define _OLOG_STR _GET_STR( _OLOG_NAME )
-#define _OPUT( args... ) fprintf( stdout, ##args );
-#define _OLOG( mesg, args... ) ({ \
-    _OPUT( \
-        "from: " _OLOG_STR " | " \
-        "file: " _FILE_STR " | " \
-        "line: " "%d" " | " \
-        "mesg: " _ENDL_STR \
-        "" mesg "" _ENDL_STR \
-        , __LINE__, ##args ) \
-})
-
-#define _ELOG_NAME elog
-#define _ELOG_STR _GET_STR( _ELOG_NAME )
-#define _EPUT( args... ) fprintf( stderr, ##args );
-#define _ELOG( mesg, args... ) ({ \
-    _EPUT( \
-        "from: " _ELOG_STR " | " \
-        "file: " _FILE_STR " | " \
-        "line: " "%d" " | " \
-        "mesg: " _ENDL_STR \
-        "" mesg "" _ENDL_STR \
-        , _LINE_NUM, ##args ) \
-})
-
-#if (defined SIGINT)
-#   define _BREAK() ({ raise(SIGINT); })
-#else
-#   define _BREAK() ({ _EPUT( _BELL_STR ); system("pause"); })
-#endif   /* SIGINT */
-
-#define _ERROR( mesg, code, actn ) \
-    ({ _ELOG( mesg ); _BREAK(); ecode = code; actn; })
-#define _EFNOT( expr, mesg, actn ) \
-    ({ if ( (expr) == _FALSE ) { _ERROR( mesg, 1, actn ); } })
-#define _PCALL( exec, mesg, actn ) \
-    ({ exec; _EFNOT( ecode == _ZERO, mesg, ({ actn; ecode = _ZERO; }) ); })
 
 /* content */
 
 _NAMESPACE_ENTER
-
-/** predecl **/
-
-extern index_t ecode;
 
 /** typedef **/
 
@@ -119,27 +76,32 @@ public: /* typedef */
     private: /* friends */
         friend signal_t;
     };
-    using link_list_t = t_array_t<link_t*>;
+    using relink_t = link_t*; //memo::t_refer_t<link_t, memo::arena_t>;
+    using relink_list_t = t_array_t<relink_t>;
 public: /* codetor */
     t_signal_t() {}
     ~t_signal_t()
     { _EFNOT(this->quit(), "signal-dtor error", return); }
-public: /* vetters */
-    inline bool_t vet_link(index_t index)
-    { return this->link_list.size() > index; }
 public: /* actions */
-    inline link_t*bind(const func_t&func)
+    inline relink_t find(index_t index)
+    { return this->relink_list.size() > index ?
+        this->relink_list[index] : relink_t();
+    }
+    inline relink_t bind(const func_t&func)
     {
-        auto index = this->link_list.size();
-        this->link_list.push_back(new link_t(*this, index, func));
-        return link_list.back();
+        auto index = this->relink_list.size();
+        /*
+        this->relink_list.push_back(relink_t(*this, index, func));
+        */
+        this->relink_list.push_back(new link_t(*this, index, func));
+        return relink_list.back();
     }
     inline bool_t quit()
     {
-        while (this->link_list.size() > 0)
+        while (this->relink_list.size() > 0)
         {
             _EFNOT(
-                this->link_list.back()->quit(),
+                this->relink_list.back()->quit(),
                 "signal-quit-link error",
                 return _FALSE
             );
@@ -148,20 +110,21 @@ public: /* actions */
     }
     inline bool_t drop(index_t index)
     {
-        _EFNOT(vet_link(index), "signal-drop error: no link found", return _FALSE);
-        delete this->link_list[index];
-        this->link_list.erase(this->link_list.begin() + index);
-        for (auto iter = index; iter < this->link_list.size(); iter++)
-        { this->link_list[iter]->index = iter; }
+        _EFNOT(this->find(index) != _NULL, "signal-drop error: no relink found", return _FALSE);
+        auto liter = this->relink_list.begin() + index;
+        delete *liter;
+        this->relink_list.erase(liter);
+        for (auto iter = index; iter < this->relink_list.size(); iter++)
+        { this->relink_list[iter]->index = iter; }
         return _TRUTH;
     }
     inline void call(args_t...args)
     {
-        for (auto link : this->link_list)
-        { link->func(std::forward<args_t&&...>(args)...); }
+        for (auto&relink : this->relink_list)
+        { relink->func(std::forward<args_t&&...>(args)...); }
     }
 private:
-    link_list_t link_list;
+    relink_list_t relink_list;
 };
 
 typedef struct timer_t {
@@ -230,8 +193,6 @@ typedef struct recta_t {
 /** datadef **/
 
 extern timer_t timer;
-
-extern index_t ecode;
 
 /** actions **/
 

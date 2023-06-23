@@ -94,13 +94,12 @@ void game_init()
                 key_mode_set(_KEY_MODE_DEAD);
                 static auto die_mil = timer.now_mil;
                 die_mil = timer.now_mil;
-                using link_t = timer_t::signal_t::link_t;
-                static link_t*link = _NULL;
-                link = timer.sig_upd.bind([&](){
+                using relink_t = timer_t::signal_t::relink_t;
+                static relink_t relink;
+                relink = timer.sig_upd.bind([&](){
                     if ((timer.now_mil - die_mil) > 3'000)
                     {
-                        link->quit();
-                        link = _NULL;
+                        relink->quit();
                         alive.valid = _TRUTH;
                         hero_rise_signal.call(alive);
                     }
