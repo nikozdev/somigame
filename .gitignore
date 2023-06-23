@@ -1,6 +1,8 @@
 *.DS_Store
 *.obj
 *.bin
+*.pch
+*.gch
 
 *bin/
 *obj/

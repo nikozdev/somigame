@@ -1,26 +1,66 @@
-#pragma once
+#ifndef SOMIGAME_HEAD_HXX
+#define SOMIGAME_HEAD_HXX
 
 /* headers */
+
+/** standard **/
+
+#include <cstdlib>
+
+/*** numbers ***/
+
+#include <cmath>
+#include <numeric>
+#include <cstdint>
+
+/*** strings ***/
+
+#include <string>
+#include <cstring>
+#include <sstream>
+
+/*** time ***/
+
+#include <ctime>
+
+/*** input-output ***/
 
 #include <cstdio>
 #include <iostream>
 
-#include <algorithm>
-#include <functional>
+/*** filesystem ***/
 
+#include <fstream>
+#include <experimental/bits/fs_fwd.h>
+#include <experimental/bits/fs_path.h>
+#include <experimental/bits/fs_dir.h>
+#include <experimental/bits/fs_ops.h>
+
+/** memory **/
+
+#include <new>
+#include <memory>
+
+/*** program execution ***/
+
+#include <csignal>
+#include <thread>
+
+/** general purpose utilities **/
+
+#include <algorithm>
+
+#include <list>
 #include <array>
 #include <vector>
 #include <initializer_list>
 
-#include <string>
-#include <cstring>
+/** 3rd party **/
 
-#include <cmath>
-#include <cstdint>
+#include <GL/glut.h>
 
-#include <csignal>
-
-#include "../lib/entt/entt.hpp"
+#include "../lib/stbl/src/stbi.hxx"
+#include "../lib/entt/src/all.hpp"
 
 /* defines */
 
@@ -101,7 +141,7 @@
 #define _ELOG_NAME elog
 #define _ELOG_STR "elog"
 #define _EPUT( args... ) fprintf( stderr, ##args );
-#define _ELOG( mesg, args... ) ({ \
+#define _ELOG( mesg, args... ) { \
     _EPUT( \
         "from: " _ELOG_STR " | " \
         "file: " _FILE_STR " | " \
@@ -109,7 +149,7 @@
         "mesg: " _ENDL_STR \
         "" mesg "" _ENDL_STR \
         , _LINE_NUM, ##args ) \
-})
+}
 
 #ifdef _CONF_WORK
 #   ifdef SIGINT
@@ -117,16 +157,28 @@
 #   else
 #       define _BREAK() ({ _EPUT( _BELL_STR ); /* system("pause"); */ })
 #   endif /* SIGINT */
-#else
+#else /* CONF_WORK */
 #   define _BREAK() ({})
-#endif
+#endif /* CONF_PLAY */
 
-#define _ERROR( mesg, code, actn ) \
-    ({ _ELOG( mesg ); _BREAK(); ecode = code; actn; })
-#define _EFNOT( expr, mesg, actn ) \
-    ({ if ( (expr) == 0 ) { _ERROR( mesg, 1, actn ); } })
-#define _PCALL( exec, mesg, actn ) \
-    ({ exec; _EFNOT( ecode == _ZERO, mesg, ({ actn; ecode = _ZERO; }) ); })
+#define _ERROR( code, actn, ... ) \
+    ({ _ELOG( __VA_ARGS__ ); _BREAK(); _ecode = code; actn; })
+#define _EFNOT( expr, actn, ... ) \
+    ({ if ( (expr) == 0 ) { _ERROR( 1, actn, __VA_ARGS__ ); } })
+#define _PCALL( exec, actn, ... ) \
+    ({ exec; _EFNOT( _ecode == _ZERO, ({ actn; _ecode = _ZERO; }), __VA_ARGS__ ); })
+
+/** meta **/
+
+#define _SIGNALDEC(name, ...) \
+    using name##_sigholder_t = t_sigholder_t<__VA_ARGS__>; \
+    using name##_sigbinder_t = t_sigbinder_t<name##_sigholder_t>; \
+    extern name##_sigbinder_t name##_sigbinder; \
+    /* _SIGNALDEC */
+#define _SIGNALDEF(name) \
+    name##_sigholder_t name##_sigholder; \
+    name##_sigbinder_t name##_sigbinder{name##_sigholder};
+    /* _SIGNALDEF */
 
 /* content */
 
@@ -183,6 +235,9 @@ using sdata_t = sbyte_t*;
 using udata_t = ubyte_t*;
 using mdata_t = void*;
 using msize_t = size_t;
+using mstep_t = msize_t;
+
+/*** standard ***/
 
 template <typename t_val_t>
 using t_array_t = std::vector<t_val_t>;
@@ -191,28 +246,83 @@ using t_list2_t = std::list<t_val_t>;
 template <typename t_val_t>
 using t_ilist_t = std::initializer_list<t_val_t>;
 
-template <typename t_call_t>
-using t_func_t = std::function<t_call_t>;
+/*** entt ***/
+
+using ent_t = entt::entity;
+using entity_t = entt::entity;
+
+template<typename t_iface_t>
+using t_delegator_t = entt::delegate<t_iface_t>;
+
+template<typename t_iface_t>
+using t_sigholder_t = entt::sigh<t_iface_t>;
+template<typename t_iface_t>
+using t_sigbinder_t = entt::sink<t_iface_t>;
+
+template<typename t_event_t>
+using t_evemitter_t = entt::emitter<t_event_t>;
+
+using dispatcher_t = entt::dispatcher;
+
+/*** standard ***/
 
 /** consdef **/
 
-constexpr v1s_t UNIT_SCALE_X = 0x010;
-constexpr v1s_t UNIT_SCALE_Y = 0x010;
-
-const size_t CSTRING_MSIZE = 0x100;
-
-constexpr v1s_t RELPOS_DIV = 128;
-constexpr v1s_t RELPOS_MID = 0x0;
-constexpr v1s_t RELPOS_MIN = -64;
-constexpr v1s_t RELPOS_MAX = +64;
-
-constexpr v1s_t SCALE_DIV = 64;
-constexpr v1s_t SCALE_MID = 0x0;
-constexpr v1s_t SCALE_MIN = -64;
-constexpr v1s_t SCALE_MAX = +64;
+constexpr v1s_t UNIT_ASIZE_X = 0x010;
+constexpr v1s_t UNIT_ASIZE_Y = 0x010;
 
 /** datadef **/
 
-static inline size_t ecode = 0;
+static inline size_t _ecode = 0;
+
+/** getters **/
+
+template <typename t_num_t>
+[[nodiscard]] constexpr inline
+auto get_num_sign(t_num_t n)
+{ return n < 0 ? -1 : +1; }
+
+/*** meta ***/
+
+template<typename t_com_t, typename t_mem_t>
+[[nodiscard]] constexpr
+decltype(auto)get_member(t_com_t&com, t_mem_t t_com_t::*mem)
+{ return com.*mem; }
+/* i did not know it for a while...
+ * nodiscard attribute means that you should use returned value
+ * that can also include [[nodiscard("comment-why-string")]] */
+template<typename t_com_t, typename t_mem_t, typename...t_rem_t>
+[[nodiscard]] constexpr
+decltype(auto)get_member(t_com_t&com, t_mem_t t_com_t::*mem, t_rem_t&&... rem)
+{ return get_member(com.*mem, std::forward<t_rem_t>(rem)...); }
+/* we can keep a tuple of varargs and pass it here */
+/*
+template<typename t_com_t, typename t_mem_t, typename...t_rem_t>
+[[nodiscard]]
+decltype(auto)get_member(t_com_t&com, std::tuple<t_rem_t...>&&rem)
+{ return get_member(com, std::apply(rem)); }
+*/
+template<typename t_com_t, typename t_tup_t, size_t...t_index>
+[[nodiscard]]
+decltype(auto)get_member(t_com_t&com, t_tup_t&tup, std::index_sequence<t_index...>)
+{ return get_member(com, std::get<t_index>(tup)...); }
+template<typename t_com_t, typename t_tup_t>
+[[nodiscard]]
+decltype(auto)get_member(t_com_t&com, t_tup_t&tup)
+{ return get_member(com, tup, std::make_index_sequence<std::tuple_size<t_tup_t>::value>()); }
+
+/** symbols **/
+
+constexpr inline
+const char* operator ""_cstr(const char* mdata, size_t msize)
+{ return mdata; }
+constexpr inline
+std::string operator ""_dstr(const char* mdata, size_t msize)
+{ return std::string(mdata, msize); }
+constexpr inline
+entt::hashed_string operator ""_hstr(const char* mdata, size_t msize)
+{ return entt::hashed_string{mdata}; }
 
 _NAMESPACE_LEAVE
+
+#endif /* SOMIGAME_HEAD_HXX */

@@ -1,7 +1,7 @@
 # basic
 
 NAME:=somigame
-VNUM:=0xa0a2a5
+VNUM:=0xa0a2a6
 TYPE:=RUN
 CONF:=WORK
 
@@ -9,8 +9,9 @@ CONF:=WORK
 
 ## suf-fix
 
-SRCSUF:=cxx
 HDRSUF:=hxx
+PCHSUF:=gch
+SRCSUF:=cxx
 OBJSUF:=obj
 BINSUF_RUN:=run
 BINSUF_LIB:=lib
@@ -27,8 +28,9 @@ MANSUF:=man
 
 FSDLOC:=.
 
-SRCFSD:=$(FSDLOC)/src
 HDRFSD:=$(FSDLOC)/src
+PCHFSD:=$(FSDLOC)/src
+SRCFSD:=$(FSDLOC)/src
 OBJFSD:=$(FSDLOC)/obj
 
 BINFSD:=$(FSDLOC)/bin
@@ -38,8 +40,9 @@ RSCFSD:=$(FSDLOC)/rsc
 
 ### lists
 
-SRCFSL:=$(wildcard $(SRCFSD)/*.$(SRCSUF))
 HDRFSL:=$(wildcard $(HDRFSD)/*.$(HDRSUF))
+PCHFSL:=$(PCHFSD)/head.$(HDRSUF).$(PCHSUF)
+SRCFSL:=$(wildcard $(SRCFSD)/*.$(SRCSUF))
 OBJFSL:=$(patsubst $(SRCFSD)/%.$(SRCSUF),$(OBJFSD)/%.$(OBJSUF),$(SRCFSL))
 
 BINFSL:=$(BINFSD)/$(NAME).$(BINSUF)
@@ -119,7 +122,7 @@ TERMDB:= $(shell which gdb)
 
 ## internal
 
-build: build-head $(OBJFSL) $(BINFSL) $(LIBLIN)
+build: build-head $(PCHFSL) $(OBJFSL) $(BINFSL) $(LIBLIN)
 build-head:
 	@for lib in ${LIBUSE}; do ${MAKE} -C $(LIBDIR)/$$lib TYPE=LIB build; done
 	$(info "[[build]]")
@@ -184,23 +187,26 @@ print: print-head
 	$(info [ARGV]=$(ARGV))
 	$(info [=[files]=])
 	$(info [==[suffix]==])
-	$(info [SRCSUF]=$(SRCSUF))
 	$(info [HDRSUF]=$(HDRSUF))
+	$(info [PCHSUF]=$(PCHSUF))
+	$(info [SRCSUF]=$(SRCSUF))
 	$(info [OBJSUF]=$(OBJSUF))
 	$(info [BINSUF]=$(BINSUF))
 	$(info [MANSUF]=$(MANSUF))
 	$(info [==[source]==])
 	$(info [===[directories]===])
 	$(info [FSDLOC]=$(FSDLOC))
-	$(info [SRCFSD]=$(SRCFSD))
 	$(info [HDRFSD]=$(HDRFSD))
+	$(info [PCHFSD]=$(PCHFSD))
+	$(info [SRCFSD]=$(SRCFSD))
 	$(info [OBJFSD]=$(OBJFSD))
 	$(info [BINFSD]=$(BINFSD))
 	$(info [MANFSD]=$(MANFSD))
 	$(info [RSCFSD]=$(RSCFSD))
 	$(info [===[lists]===])
-	$(info [SRCFSL]=$(SRCFSL))
 	$(info [HDRFSL]=$(HDRFSL))
+	$(info [PCHFSL]=$(PCHFSL))
+	$(info [SRCFSL]=$(SRCFSL))
 	$(info [OBJFSL]=$(OBJFSL))
 	$(info [BINFSL]=$(BINFSL))
 	$(info [MANFSL]=$(MANFSL))
@@ -251,15 +257,20 @@ print-head:
 
 ## source
 
-$(SRCFSD)/%.$(SRCSUF):
-	$(info "[source]=$@")
-
 $(HDRFSD)/%.$(HDRSUF):
 	$(info "[header]=$@")
+
+$(PCHFSD)/%.$(PCHSUF): $(HDRFSD)/%
+	$(info "[pchead]=$@")
+	$(CMAKER) $@ $^ $(CFLAGS)
+
+$(SRCFSD)/%.$(SRCSUF): $(HDRFSD)/%.$(HDRSUF)
+	$(info "[source]=$@")
 
 $(OBJFSD)/%.$(OBJSUF): $(SRCFSD)/%.$(SRCSUF)
 	$(info "[object]=$@")
 	$(CMAKER) $@ $^ $(CFLAGS)
+#strace -e openat -ff $(CMAKER) $@ $^ $(CFLAGS) 2>&1 | grep '\.hxx\.gch'
 
 $(BINFSD)/%.$(BINSUF): $(OBJFSL)
 	$(info "[source-binary]=$@")
