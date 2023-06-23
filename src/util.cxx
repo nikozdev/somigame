@@ -17,6 +17,8 @@ _NAMESPACE_ENTER
 
 timer_t timer;
 
+index_t ecode = 0;
+
 /** actions **/
 
 void util_loop()

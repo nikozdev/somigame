@@ -17,7 +17,7 @@ constexpr auto RATIO_Y = 9;
 constexpr auto VIEW_SIZES_W = UNIT_SCALE_X * RATIO_X;
 constexpr auto VIEW_SIZES_H = UNIT_SCALE_Y * RATIO_Y;
 
-constexpr auto GUIS_SIZES_X = UNIT_SCALE_X;
+constexpr auto GUIS_SIZES_X = UNIT_SCALE_X*2;
 constexpr auto GUIS_SIZES_Y = UNIT_SCALE_X;
 constexpr auto GUIS_LAYER = 0xff;
 
@@ -55,7 +55,7 @@ typedef struct image_origin_t {
     sizes_t sizes = { .w = 0, .h = 0 };
     int mstep = 0;
     size_t msize = 0;
-    unsigned char*mdata = _NULL;
+    udata_t mdata = _NULL;
 } image_t, image_origin_t;
 
 typedef struct image_region_t {
@@ -103,6 +103,7 @@ typedef struct ratio_t {
 } ratio_t;
 
 typedef struct fonts_t {
+    color_t color = {0xff};
     image_region_t image = {
         .index = _IMAGE_FONT_MAIN,
         .coord = {0,0},
@@ -118,6 +119,7 @@ typedef struct fonts_t {
 typedef struct grid_t {
     sizes_t cells{UNIT_SCALE_X,UNIT_SCALE_Y}; /* sizes of cells */
     sizes_t tails{0,0}; /* trailing lines from both sides */
+    v1s_t width = 1;
 } grid_t;
 
 /** getters **/

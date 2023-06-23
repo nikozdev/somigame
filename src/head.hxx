@@ -49,6 +49,24 @@
 
 #define _FNUM_SIZE 1'000'000
 
+#define _LINE_NUM __LINE__
+
+#define _NUM_MAX( l, r ) ( l > r ? l : r )
+#define _NUM_MIN( l, r ) ( l < r ? l : r )
+
+/** strings **/
+
+#define _FILE_STR __FILE__
+
+#define _ENDS_SYM '\0'
+#define _ENDS_STR "\0"
+
+#define _ENDL_SYM '\n'
+#define _ENDL_STR "\n"
+
+#define _BELL_SYM '\a'
+#define _BELL_STR "\a"
+
 /** logic **/
 
 #define _FALSE false
@@ -82,6 +100,9 @@ struct v2n_t { t_num_t x = 0, y = 0; };
 template<typename t_num_t>
 struct v3n_t { t_num_t x = 0, y = 0, z = 0; };
 
+using v1bit_t = bool_t;
+using v1b_t = v1bit_t;
+
 using v1u08_t = uint8_t;
 using v1u16_t = uint16_t;
 using v1u32_t = uint32_t;
@@ -112,7 +133,7 @@ using ubyte_t = unsigned char;
 using mbyte_t = char;
 using sdata_t = sbyte_t*;
 using udata_t = ubyte_t*;
-using mdata_t = mbyte_t*;
+using mdata_t = void*;
 using msize_t = size_t;
 
 template <typename t_val_t>

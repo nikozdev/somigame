@@ -67,6 +67,6 @@ using ubyte_t = unsigned char;
 using mbyte_t = char;
 using sdata_t = sbyte_t*;
 using udata_t = ubyte_t*;
-using mdata_t = mbyte_t*;
+using mdata_t = void*;
 
 _NAMESPACE_LEAVE

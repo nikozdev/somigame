@@ -31,6 +31,10 @@ constexpr auto GAME_HALFS_Z = GAME_HALFC_Z * TILE_SCALE_Z;
 
 /** typedef **/
 
+typedef struct alive_t {
+    bool_t valid = _TRUTH;
+} alive_t, com_alive_t;
+
 typedef struct tile_t {
     bool _;
 } tile_t, com_tile_t;
@@ -43,6 +47,15 @@ typedef struct block_t {
     bool _;
 } block_t, com_block_t;
 
+/** datadef **/
+
+using hero_rise_signal_t = t_signal_t<alive_t&>;
+extern hero_rise_signal_t hero_rise_signal;
+using hero_died_signal_t = t_signal_t<alive_t&>;
+extern hero_died_signal_t hero_died_signal;
+
+using pick_step_signal_t = t_signal_t<coord_t>;
+extern pick_step_signal_t pick_step_signal;
 
 /** actions **/
 
@@ -51,6 +64,9 @@ extern void game_init();
 extern void game_loop();
 
 extern void inc_action_count(count_t inc = 1);
+
+extern bool proc_ent(ent_t ent);
+extern bool kill_ent(ent_t ent);
 
 /*** hero ***/
 

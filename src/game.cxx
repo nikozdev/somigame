@@ -20,6 +20,11 @@ ent_t tile_map[TILE_COUNT];
 
 count_t action_count = 0;
 
+hero_rise_signal_t hero_rise_signal;
+hero_died_signal_t hero_died_signal;
+
+pick_step_signal_t pick_step_signal;
+
 /** actions **/
 
 void game_init()
@@ -41,6 +46,7 @@ void game_init()
         auto&visual_h = ecos.emplace<com_visual_t>(ent_hero, _TRUTH, 1);
         auto&anchor_h = ecos.emplace<com_anchor_t>(ent_hero, RELPOS_MID, RELPOS_MID);
         auto&ename_h = ecos.emplace<com_ename_t>(ent_hero, _ENAME_GAME_HERO);
+        auto&alive_h = ecos.emplace<com_alive_t>(ent_hero, _TRUTH);
         auto&coord_h = ecos.emplace<com_coord_t>(ent_hero, 0, 0, 0);
         ecos.emplace<com_sizes_t>(ent_hero, TILE_SCALE_X, TILE_SCALE_Y);
         ecos.emplace<com_scale_t>(ent_hero, 1, 1);
@@ -65,7 +71,7 @@ void game_init()
             auto&image_p = ecos.emplace<com_image_t>(ent_pick, _IMAGE_GAME_PICK);
             key_mode_set_signal.bind([&](key_mode_e mode){
                 if (mode == _KEY_MODE_PICK)
-                { visual_p.valid = _TRUTH; coord_p.x = 0; coord_p.y = 0; }
+                { visual_p.valid = _TRUTH; coord_p.x = 0; coord_p.y = 0; coord_p.z = 0; }
                 else
                 { visual_p.valid = _FALSE; }
             });
@@ -76,7 +82,32 @@ void game_init()
             if (ecos.valid(ent_grid))
             { set_ancestor(ent_grid, ent_hero); }
         } /* grid */
-    }
+        if constexpr (_TRUTH)
+        { /* signals */
+            hero_rise_signal.bind([&](alive_t&alive){
+                coord_h.x = 0;
+                coord_h.y = 0;
+                coord_h.z = 0; 
+                key_mode_set(_KEY_MODE_MAIN);
+            });
+            hero_died_signal.bind([&](alive_t&alive){
+                key_mode_set(_KEY_MODE_DEAD);
+                static auto die_mil = timer.now_mil;
+                die_mil = timer.now_mil;
+                using link_t = timer_t::signal_t::link_t;
+                static link_t*link = _NULL;
+                link = timer.sig_upd.bind([&](){
+                    if ((timer.now_mil - die_mil) > 3'000)
+                    {
+                        link->quit();
+                        link = _NULL;
+                        alive.valid = _TRUTH;
+                        hero_rise_signal.call(alive);
+                    }
+                });
+            });
+        } /* signals */
+    } /* hero */
     if constexpr (_TRUTH)
     { /* tilemap */
         ecos.on_construct<com_tile_t>().connect<[](ecos_t&ecos, entt::entity ent)
@@ -149,13 +180,12 @@ void game_loop()
             }
         }
     }
-    if constexpr (_TRUTH)
+    if constexpr (_FALSE)
     { /* pick update */
         auto&coord_h = ecos.get<com_coord_t>(ent_hero);
         auto&coord_p = ecos.get<com_coord_t>(ent_pick);
-        coord_p.z = coord_h.z;
     }
-    if constexpr (_TRUTH)
+    if constexpr (_FALSE)
     {
         for (auto&&[ent, coord_e] : ecos.view<com_coord_t>().each())
         {
@@ -165,7 +195,7 @@ void game_loop()
                     && (coord_e.z > -GAME_HALFC_Z)
                 ) { coord_e.z -= TILE_SCALE_Z; }
                 if (vet_floor_from_coord(coord_e) == _FALSE)
-                { coord_e.x = 0; coord_e.y = 0; coord_e.z = 0; }
+                { kill_ent(ent); }
             }
         }
     }
@@ -175,6 +205,35 @@ void inc_action_count(count_t inc)
 {
     if (inc < 1) { return; }
     action_count += inc;
+}
+
+bool proc_ent(ent_t ent)
+{
+    auto&coord_e = ecos.get<com_coord_t>(ent);
+    if (vet_ancestor(ent, entt::null) || vet_ancestor(ent, ent_somi))
+    {
+        while (vet_floor_from_coord(coord_e) == _FALSE
+            && (coord_e.z > -GAME_HALFC_Z)
+        ) { coord_e.z -= TILE_SCALE_Z; }
+        if (vet_floor_from_coord(coord_e) == _FALSE)
+        { kill_ent(ent); }
+    }
+    return _TRUTH;
+}
+bool kill_ent(ent_t ent)
+{
+    if (auto*alive = ecos.try_get<com_alive_t>(ent))
+    {
+        if (alive->valid)
+        {
+            alive->valid = _FALSE;
+            if (ent == ent_hero)
+            { hero_died_signal.call(*alive); }
+            return _TRUTH;
+        }
+        else { return _FALSE; }
+    }
+    else { return _FALSE; }
 }
 
 /*** hero ***/
@@ -189,6 +248,7 @@ void hero_goto_x(v1s_t gotox)
     direc_h.x = get_num_sign(gotox - coord_h.x);
     direc_h.y = 0;
     coord_h.x = std::clamp(gotox, -GAME_HALFS_X, +GAME_HALFS_X);
+    proc_ent(ent_hero);
 }
 void hero_goto_y(v1s_t gotoy)
 {
@@ -198,6 +258,7 @@ void hero_goto_y(v1s_t gotoy)
     direc_h.x = 0;
     direc_h.y = get_num_sign(gotoy - coord_h.y);
     coord_h.y = std::clamp(gotoy, -GAME_HALFS_Y, +GAME_HALFS_Y);
+    proc_ent(ent_hero);
 }
 void hero_goto_z(v1s_t gotoz)
 {
@@ -207,6 +268,7 @@ void hero_goto_z(v1s_t gotoz)
     direc_h.x = 0;
     direc_h.y = get_num_sign(gotoz - coord_h.z);
     coord_h.z = std::clamp(gotoz, -GAME_HALFS_Z, +GAME_HALFS_Z);
+    proc_ent(ent_hero);
 }
 
 /**** step ****/
@@ -283,6 +345,7 @@ void pick_step_x(v1s_t stepx)
         stepx -= signx;
         inc_action_count(1);
     }
+    pick_step_signal.call(coord_p);
 }
 void pick_step_y(v1s_t stepy)
 {
@@ -305,6 +368,7 @@ void pick_step_y(v1s_t stepy)
         stepy -= signy;
         inc_action_count(1);
     }
+    pick_step_signal.call(coord_p);
 }
 
 void hero_turn(bool_t lside)

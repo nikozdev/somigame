@@ -16,6 +16,7 @@ _NAMESPACE_ENTER
 typedef enum key_mode_e {
     _KEY_MODE_MAIN = 0x0,
     _KEY_MODE_VIEW,
+    _KEY_MODE_DEAD,
     _KEY_MODE_HERO,
     _KEY_MODE_PICK,
     _KEY_MODE_COUNT

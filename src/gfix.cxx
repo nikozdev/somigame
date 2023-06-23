@@ -32,9 +32,9 @@ using drawlist_t = t_array_t<drawable_t>;
 
 /** datadef **/
 
-ent_t ent_guis;
-ent_t ent_view;
-ent_t ent_grid;
+ent_t ent_guis = entt::null;
+ent_t ent_view = entt::null;
+ent_t ent_grid = entt::null;
 com_coord_t*coord_v;
 com_direc_t*direc_v;
 com_sizes_t*sizes_v;
@@ -58,11 +58,11 @@ image_origin_t image_list[_IMAGE_COUNT];
 
 constexpr const int IMAGE_NONE_MSTEP = 4;
 constexpr const com_sizes_t IMAGE_NONE_SIZES = { .w = 1, .h = 1, };
-unsigned char IMAGE_NONE_MDATA[] = { 0xff,0xff,0xff,0xff };
+ubyte_t IMAGE_NONE_MDATA[] = { 0xff,0xff,0xff,0xff };
 
 constexpr const int IMAGE_TEST_MSTEP = 4;
 constexpr const com_sizes_t IMAGE_TEST_SIZES = { .w = 4, .h = 4, };
-unsigned char IMAGE_TEST_MDATA[] = {
+ubyte_t IMAGE_TEST_MDATA[] = {
     0xaa,0xaa,0xaa,0x55, 0x55,0x55,0x55,0xaa, 0xaa,0xaa,0xaa,0x55, 0x55,0x55,0x55,0xaa,
     0x55,0x55,0x55,0xaa, 0xaa,0xaa,0xaa,0x55, 0x55,0x55,0x55,0xaa, 0xaa,0xaa,0xaa,0x55,
     0xaa,0xaa,0xaa,0x55, 0x55,0x55,0x55,0xaa, 0xaa,0xaa,0xaa,0x55, 0x55,0x55,0x55,0xaa,
@@ -230,6 +230,37 @@ void gfix_init()
             ecos.emplace<com_color_t>(ent_quad, 0x80);
             ecos.emplace<com_image_t>(ent_quad, _IMAGE_META_NONE, pos2d_t{0,0}, sizes_t{0,0});
             */
+            if constexpr(_TRUTH)
+            { /* died */
+                auto ent_died = ecos.create();
+                ecos.emplace<com_family_t>(ent_died, ent_quad);
+                auto&visual = ecos.emplace<com_visual_t>(ent_died, _FALSE, 0x10);
+                ecos.emplace<com_relpos_t>(ent_died, RELPOS_MAX, RELPOS_MID);
+                ecos.emplace<com_anchor_t>(ent_died, RELPOS_MAX, RELPOS_MID);
+                ecos.emplace<com_coord_t>(ent_died, 0, 0, 0x10);
+                ecos.emplace<com_sizes_t>(ent_died, sizes_v->w-GUIS_SIZES_X*2, GUIS_SIZES_Y);
+                ecos.emplace<com_scale_t>(ent_died, 1, 1);
+                ecos.emplace<com_color_t>(ent_died, 0x20);
+                ecos.emplace<com_image_t>(ent_died, _IMAGE_META_NONE, pos2d_t{0,0}, sizes_t{0,0});
+                ecos.emplace<com_ename_t>(ent_died, _ENAME_GUIS_MB_TEXT);
+                ecos.emplace<com_fonts_t>(ent_died, fonts_t{
+                    .color = { .v = 0xe0 },
+                    .image = {
+                        .index = _IMAGE_FONT_MAIN,
+                        .coord = {0,0},
+                        .sizes = {0,0},
+                    },
+                    .first = ' ',
+                    .glyph = {
+                        .sizes = {8,8},
+                        .steps = {0,0},
+                    },
+                });
+                auto&cstring = ecos.emplace<com_cstring_t>(ent_died, 8);
+                std::snprintf(cstring.mdata, cstring.msize, "YouDied");
+                hero_rise_signal.bind([&](alive_t&alive){ visual.valid = _FALSE; });
+                hero_died_signal.bind([&](alive_t&alive){ visual.valid = _TRUTH; });
+            } /* died */
         }
         if constexpr (_TRUTH)
         { /* gui-mb */
@@ -257,6 +288,7 @@ void gfix_init()
                 ecos.emplace<com_color_t>(ent_text, 0xe0);
                 ecos.emplace<com_ename_t>(ent_text, _ENAME_GUIS_MB_TEXT);
                 ecos.emplace<com_fonts_t>(ent_text, fonts_t{
+                    .color = { .v = 0xe0 },
                     .image = {
                         .index = _IMAGE_FONT_MAIN,
                         .coord = {0,0},
@@ -310,6 +342,7 @@ void gfix_init()
                 ecos.emplace<com_color_t>(ent_text, 0xe0);
                 ecos.emplace<com_ename_t>(ent_text, _ENAME_GUIS_MT_TEXT);
                 ecos.emplace<com_fonts_t>(ent_text, fonts_t{
+                    .color = { .v = 0xe0 },
                     .image = {
                         .index = _IMAGE_FONT_MAIN,
                         .coord = {0,0},
@@ -332,11 +365,38 @@ void gfix_init()
             ecos.emplace<com_relpos_t>(ent_quad, RELPOS_MIN, RELPOS_MID);
             ecos.emplace<com_anchor_t>(ent_quad, RELPOS_MIN, RELPOS_MID);
             ecos.emplace<com_coord_t>(ent_quad, 0, 0, 0);
-            ecos.emplace<com_sizes_t>(ent_quad, GUIS_SIZES_X, sizes_v->h - GUIS_SIZES_X*2);
+            auto&sizes_q = ecos.emplace<com_sizes_t>(ent_quad, GUIS_SIZES_X, sizes_v->h - GUIS_SIZES_Y*2);
             ecos.emplace<com_scale_t>(ent_quad, 1, 1);
             ecos.emplace<com_color_t>(ent_quad, 0x40);
             ecos.emplace<com_ename_t>(ent_quad, _ENAME_GUIS_LM_QUAD);
             ecos.emplace<com_image_t>(ent_quad, _IMAGE_META_NONE, pos2d_t{0,0}, sizes_t{0,0});
+            if constexpr (_TRUTH)
+            { /* text-lm */
+                auto ent_text = ecos.create();
+                ecos.emplace<com_family_t>(ent_text, ent_quad);
+                ecos.emplace<com_visual_t>(ent_text, _TRUTH, 1);
+                ecos.emplace<com_relpos_t>(ent_text, RELPOS_MIN, RELPOS_MIN);
+                ecos.emplace<com_anchor_t>(ent_text, RELPOS_MIN, RELPOS_MIN);
+                ecos.emplace<com_coord_t>(ent_text, 0, 0, 0);
+                ecos.emplace<com_sizes_t>(ent_text, sizes_q.w, sizes_q.h);
+                ecos.emplace<com_scale_t>(ent_text, 1, 1);
+                ecos.emplace<com_color_t>(ent_text, 0xe0);
+                ecos.emplace<com_ename_t>(ent_text, _ENAME_GUIS_LM_TEXT);
+                ecos.emplace<com_fonts_t>(ent_text, fonts_t{
+                    .color = { .v = 0xe0 },
+                    .image = {
+                        .index = _IMAGE_FONT_MAIN,
+                        .coord = {0,0},
+                        .sizes = {0,0},
+                    },
+                    .first = ' ',
+                    .glyph = {
+                        .sizes = {8,8},
+                        .steps = {0,0},
+                    },
+                });
+                auto&cstring = ecos.emplace<com_cstring_t>(ent_text, 128);
+            }
         }
         if constexpr (_TRUTH)
         { /* gui-rm */
@@ -346,11 +406,56 @@ void gfix_init()
             ecos.emplace<com_relpos_t>(ent_quad, RELPOS_MAX, RELPOS_MID);
             ecos.emplace<com_anchor_t>(ent_quad, RELPOS_MAX, RELPOS_MID);
             ecos.emplace<com_coord_t>(ent_quad, 0, 0, 0);
-            ecos.emplace<com_sizes_t>(ent_quad, GUIS_SIZES_X, sizes_v->h - GUIS_SIZES_Y*2);
+            auto&sizes_q = ecos.emplace<com_sizes_t>(ent_quad, GUIS_SIZES_X, sizes_v->h - GUIS_SIZES_Y*2);
             ecos.emplace<com_scale_t>(ent_quad, 1, 1);
             ecos.emplace<com_color_t>(ent_quad, 0x40);
-            ecos.emplace<com_image_t>(ent_quad, _IMAGE_META_NONE, pos2d_t{0,0}, sizes_t{0,0});
             ecos.emplace<com_ename_t>(ent_quad, _ENAME_GUIS_RM_QUAD);
+            ecos.emplace<com_image_t>(ent_quad, _IMAGE_META_NONE, pos2d_t{0,0}, sizes_t{0,0});
+            if constexpr (_TRUTH)
+            { /* text-rm */
+                auto ent_text = ecos.create();
+                ecos.emplace<com_family_t>(ent_text, ent_quad);
+                ecos.emplace<com_visual_t>(ent_text, _TRUTH, 1);
+                ecos.emplace<com_relpos_t>(ent_text, RELPOS_MIN, RELPOS_MIN);
+                ecos.emplace<com_anchor_t>(ent_text, RELPOS_MIN, RELPOS_MIN);
+                ecos.emplace<com_coord_t>(ent_text, 0, 0, 0);
+                ecos.emplace<com_sizes_t>(ent_text, sizes_q.w, sizes_q.h);
+                ecos.emplace<com_scale_t>(ent_text, 1, 1);
+                ecos.emplace<com_color_t>(ent_text, 0xe0);
+                ecos.emplace<com_ename_t>(ent_text, _ENAME_GUIS_RM_TEXT);
+                ecos.emplace<com_fonts_t>(ent_text, fonts_t{
+                    .color = { .v = 0xe0 },
+                    .image = {
+                        .index = _IMAGE_FONT_MAIN,
+                        .coord = {0,0},
+                        .sizes = {0,0},
+                    },
+                    .first = ' ',
+                    .glyph = {
+                        .sizes = {8,8},
+                        .steps = {0,0},
+                    },
+                });
+                auto&cstring = ecos.emplace<com_cstring_t>(ent_text, 128);
+                auto update = [&](coord_t coord_p){
+                    coord_p = from_coord_into_tile_coord(coord_p);
+                    std::snprintf(
+                        cstring.mdata, cstring.msize,
+                        "pick\n"
+                        "========%c"
+                        "coord\n"
+                        "x%+04i\n"
+                        "y%+04i\n"
+                        "z%+04i\n"
+                        "========%c",
+                        '\n',
+                        coord_p.x, coord_p.y, coord_p.z,
+                        '\0'
+                    );
+                };
+                update({0,0,0});
+                pick_step_signal.bind(update);
+            }
         }
     }
     if constexpr (_TRUTH)
@@ -368,6 +473,7 @@ void gfix_init()
             grid_t{
                 .cells = { TILE_SCALE_X, TILE_SCALE_Y },
                 .tails = { TILE_SCALE_X, TILE_SCALE_Y },
+                .width = 1,
             }
         );
         if constexpr (_TRUTH)
@@ -557,10 +663,33 @@ void draw_unit(drawable_t&drawable)
             glEnd();
             glBindTexture(GL_TEXTURE_2D, 0);
         }
+        if (auto*grid = ecos.try_get<grid_t>(entity))
+        {
+            auto cells = grid->cells;
+            auto tails = grid->tails;
+            auto width = grid->width;
+            glBegin(GL_QUADS);
+            auto fromy = coord_sb - tails.h;
+            auto intoy = coord_st + tails.h;
+            for (auto stepx = coord_sl; stepx <= coord_sr; stepx += cells.w)
+            {
+                glVertex2i(stepx - width, fromy); glVertex2i(stepx + width, fromy);
+                glVertex2i(stepx + width, intoy); glVertex2i(stepx - width, intoy);
+            }
+            auto fromx = coord_sl - tails.w;
+            auto intox = coord_sr + tails.w;
+            for (auto stepy = coord_sb; stepy <= coord_st; stepy += cells.h)
+            {
+                glVertex2i(fromx, stepy - width); glVertex2i(fromx, stepy + width);
+                glVertex2i(intox, stepy + width); glVertex2i(intox, stepy - width);
+            }
+            glEnd();
+        }
         if (auto*cstring = ecos.try_get<com_cstring_t>(entity))
         {
             auto fonts = fonts_t{};
             if (auto*temp = ecos.try_get<fonts_t>(entity)) { fonts =*temp; }
+            glColor3ub(fonts.color.v, fonts.color.v, fonts.color.v);
             const auto&image = image_list[fonts.image.index];
             auto image_uw = static_cast<v1u_t>(fonts.image.sizes.w);
             auto image_uh = static_cast<v1u_t>(fonts.image.sizes.h);
@@ -652,9 +781,6 @@ void draw_unit(drawable_t&drawable)
                     continue;
                 }
                 mbyte = std::max(mdata[iter], fonts.first) - fonts.first;
-                coord_sl += sizes_uw;
-                coord_sr += sizes_uw;
-                moved_sx += sizes_uw;
                 auto stepx = (mbyte % glyph_count_uw);
                 glyph_sl = static_cast<v1f_t>(stepx * glyph_uw);
                 glyph_sl = glyph_sl / image_fw;
@@ -671,6 +797,9 @@ void draw_unit(drawable_t&drawable)
                 glVertex2i(coord_sr, coord_st);
                 glTexCoord2f(glyph_sl, glyph_st);
                 glVertex2i(coord_sl, coord_st);
+                coord_sl += sizes_uw;
+                coord_sr += sizes_uw;
+                moved_sx += sizes_uw;
             }
             glEnd();
             glBindTexture(GL_TEXTURE_2D, 0);
@@ -679,21 +808,6 @@ void draw_unit(drawable_t&drawable)
             glVertex2i(label_sr, label_sb);
             glVertex2i(label_sr, label_st);
             glVertex2i(label_sl, label_st);
-            glEnd();
-        }
-        if (auto*grid = ecos.try_get<grid_t>(entity))
-        {
-            auto cells = grid->cells;
-            auto tails = grid->tails;
-            glBegin(GL_LINES);
-            auto fromy = coord_sb - tails.h;
-            auto intoy = coord_st + tails.h;
-            for (auto stepx = coord_sl; stepx <= coord_sr; stepx += cells.w)
-            { glVertex2i(stepx, fromy); glVertex2i(stepx, intoy); }
-            auto fromx = coord_sl - tails.w;
-            auto intox = coord_sr + tails.w;
-            for (auto stepy = coord_sb; stepy <= coord_st; stepy += cells.h)
-            { glVertex2i(fromx, stepy); glVertex2i(intox, stepy); }
             glEnd();
         }
     }
@@ -761,7 +875,7 @@ void gfix_loop()
         auto&cstring = ecos.get<com_cstring_t>(get_by_ename(ename_t{_ENAME_GUIS_MB_TEXT}));
         memset(cstring.mdata, '\0', cstring.msize);
         std::snprintf(
-            cstring.mdata, cstring.msize - 1,
+            cstring.mdata, cstring.msize,
             "mode=%s;acts=%08d;"
             "%c"
             "%s(%+d)x(%d)",
@@ -775,7 +889,7 @@ void gfix_loop()
         auto&cstring = ecos.get<com_cstring_t>(get_by_ename(ename_t{_ENAME_GUIS_MT_TEXT}));
         memset(cstring.mdata, '\0', cstring.msize);
         std::snprintf(
-            cstring.mdata, cstring.msize - 1,
+            cstring.mdata, cstring.msize,
             "now=%03zu.%03zu;fps=%05zu;"
             "%c"
             "p(x%+04iy%+04iz%+04i)s(x%+04iy%+04i)d(x%+1dy%+1d)"

@@ -13,7 +13,7 @@ _NAMESPACE_ENTER
 
 /** datadef **/
 
-key_mode_set_signal_t key_mode_set_signal = {};
+key_mode_set_signal_t key_mode_set_signal;
 
 std::string key_line = "";
 int key_narg_sign = +1;
@@ -223,6 +223,7 @@ void iput_init()
                 }
                 coord_p.x = 0;
                 coord_p.y = 0;
+                coord_p.z = 0;
             });
         } /* pick */
     } /* keybinds */
