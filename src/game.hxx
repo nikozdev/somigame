@@ -3,8 +3,10 @@
 /* headers */
 
 #include "head.hxx"
-#include "ecos.hxx"
+#include "util.hxx"
 #include "gfix.hxx"
+
+#include "../lib/entt/src/entity/fwd.hpp"
 
 /* content */
 
@@ -12,125 +14,173 @@ _NAMESPACE_ENTER
 
 /** consdef **/
 
-constexpr auto TILE_IMAGE_COUNT = 0b1'000'00'000;
-constexpr auto TILE_COUNT_X = 0x80;
-constexpr auto TILE_COUNT_Y = 0x40;
-constexpr auto TILE_COUNT_Z = 0x20;
-constexpr auto TILE_COUNT = TILE_COUNT_X * TILE_COUNT_Y * TILE_COUNT_Z;
-constexpr auto TILE_SCALE_X = 0x10;
-constexpr auto TILE_SCALE_Y = 0x10;
-constexpr auto TILE_SCALE_Z = 0x01;
-constexpr auto TILE_HALFS_X = TILE_SCALE_X / 2;
-constexpr auto TILE_HALFS_Y = TILE_SCALE_Y / 2;
-constexpr auto GAME_HALFC_X = TILE_COUNT_X / 2;
-constexpr auto GAME_HALFC_Y = TILE_COUNT_Y / 2;
-constexpr auto GAME_HALFC_Z = TILE_COUNT_Z / 2;
-constexpr auto GAME_HALFS_X = GAME_HALFC_X * TILE_SCALE_X;
-constexpr auto GAME_HALFS_Y = GAME_HALFC_Y * TILE_SCALE_Y;
-constexpr auto GAME_HALFS_Z = GAME_HALFC_Z * TILE_SCALE_Z;
+constexpr auto TCELL_IMAGE_COUNT = 0b1'000'00'000;
+
+constexpr auto TCELL_CFULL_X = 0x80;
+constexpr auto TCELL_CFULL_Y = 0x40;
+constexpr auto TCELL_CFULL_Z = 0x20;
+constexpr auto TCELL_CFULL = TCELL_CFULL_X * TCELL_CFULL_Y * TCELL_CFULL_Z;
+
+constexpr auto TCELL_CHALF_X = TCELL_CFULL_X / 2;
+constexpr auto TCELL_CHALF_Y = TCELL_CFULL_Y / 2;
+constexpr auto TCELL_CHALF_Z = TCELL_CFULL_Z / 2;
+constexpr auto TCELL_CHALF = TCELL_CHALF_X * TCELL_CHALF_Y * TCELL_CHALF_Z;
+
+constexpr auto TCELL_ASIZE_X = 0x10;
+constexpr auto TCELL_ASIZE_Y = 0x10;
+constexpr auto TCELL_ASIZE_Z = 0x01;
+
+constexpr auto TCELL_AHALF_X = TCELL_ASIZE_X / 2;
+constexpr auto TCELL_AHALF_Y = TCELL_ASIZE_Y / 2;
+
+constexpr auto TGRID_AHALF_X = TCELL_CHALF_X * TCELL_ASIZE_X;
+constexpr auto TGRID_AHALF_Y = TCELL_CHALF_Y * TCELL_ASIZE_Y;
+constexpr auto TGRID_AHALF_Z = TCELL_CHALF_Z * TCELL_ASIZE_Z;
+
+/** forward **/
+
+typedef struct family_t family_t;
 
 /** typedef **/
 
-typedef struct alive_t {
-    bool_t valid = _TRUTH;
-} alive_t, com_alive_t;
+/*** structs ***/
 
-typedef struct tile_t {
+typedef struct alive_t {
+    v1bit_t valid = _TRUTH; /* dead or live */
+    msize_t timep = 0; /* the last state change timepoint */
+} alive_t; /* anything living or diying */
+
+typedef struct actor_t {
+    count_t count = 0; /* action count */
+    msize_t timep = 0; /* the last action timepoint */
+} actor_t; /* anything what can perform actions */
+
+typedef struct mover_t {
+    v1bit_t fall = _TRUTH;
+    apos2_t move = { 0, 0 };
+} mover_t; /* anything what can move or be moved */
+
+typedef struct tcell_t {
     bool _;
-} tile_t, com_tile_t;
+} tcell_t; /* tile cell */
 
 typedef struct floor_t {
     bool _;
-} floor_t, com_floor_t;
+} floor_t; /* what can be walked on */
 
 typedef struct block_t {
     bool _;
-} block_t, com_block_t;
+} block_t; /* what cannot be passed through */
 
 /** datadef **/
 
-using hero_rise_signal_t = t_signal_t<alive_t&>;
-extern hero_rise_signal_t hero_rise_signal;
-using hero_died_signal_t = t_signal_t<alive_t&>;
-extern hero_died_signal_t hero_died_signal;
+struct somi_t {
+    entity_t entity;
+    /* visual */
+    visual_t*visual;
+    /* family */
+    family_t*family;
+} extern somi; /* the global world entity */
 
-using pick_step_signal_t = t_signal_t<coord_t>;
-extern pick_step_signal_t pick_step_signal;
+struct hero_t {
+    entity_t entity;
+    /* logic */
+    alive_t *alive;
+    actor_t *actor;
+    mover_t *mover;
+    /* sizes */
+    asize_t *asize;
+    gsize_t *gsize;
+    tsize_t *tsize;
+    /* coord */
+    apos2_t *apos2;
+    zpos1_t *zpos1;
+    gpos3_t *gpos3;
+    tpos3_t *tpos3;
+    pivot_t *pivot;
+    /* geometry */
+    direc_t *direc;
+    /* visual */
+    visual_t*visual;
+    /* family */
+    family_t*family;
+} extern hero; /* nice to meet you */
+
+struct pick_t {
+    entity_t entity;
+    /* visual */
+    visual_t*visual;
+    /* coord */
+    apos2_t *apos2;
+    gpos3_t *gpos3;
+    tpos3_t *tpos3;
+    /* sizes */
+    asize_t *asize;
+    /* family */
+    family_t*family;
+} extern pick; /* tile selector/pointer/picker */
+
+_SIGNALDEC(hero_rise, void(const alive_t))
+_SIGNALDEC(hero_died, void(const alive_t))
+
+_SIGNALDEC(pick_step, void())
 
 /** actions **/
 
 extern void game_init();
 
-extern void game_loop();
-
-extern void inc_action_count(count_t inc = 1);
-
-extern bool proc_ent(ent_t ent);
-extern bool kill_ent(ent_t ent);
-
-/*** hero ***/
-
-extern void hero_goto_x(v1s_t gotox = 0);
-extern void hero_goto_y(v1s_t gotoy = 0);
-extern void hero_goto_z(v1s_t gotoz = 0);
-extern void hero_step_x(v1s_t stepx);
-extern void hero_step_y(v1s_t stepy);
-extern void pick_step_x(v1s_t stepx);
-extern void pick_step_y(v1s_t stepy);
-extern void hero_turn(bool_t lside = _TRUTH);
-
 /** getters **/
 
-extern count_t get_action_count();
-
-inline coord_t from_tile_coord_into_coord(coord_t coord)
+inline tpos3_t get_tpos3_from_gpos3(gpos3_t gpos3)
 {
-    return coord_t{
-        .x = (coord.x) * TILE_SCALE_X,
-        .y = (coord.y) * TILE_SCALE_Y,
-        .z = (coord.z) * TILE_SCALE_Z,
+    return tpos3_t{
+        .x = gpos3.x/TCELL_ASIZE_X,
+        .y = gpos3.y/TCELL_ASIZE_Y,
+        .z = gpos3.z/TCELL_ASIZE_Z,
     };
 }
-inline coord_t from_coord_into_tile_coord(coord_t coord)
+inline gpos3_t get_gpos3_from_tpos3(tpos3_t tpos3)
 {
-    coord.x /= (TILE_SCALE_X);
-    coord.y /= (TILE_SCALE_Y);
-    return coord;
-}
-inline coord_t from_tile_coord_into_tile_steps(coord_t coord)
-{
-    return {
-        coord.x + GAME_HALFC_X,
-        coord.y + GAME_HALFC_Y,
-        coord.z + GAME_HALFC_Z,
+    return gpos3_t{
+        .x = tpos3.x * TCELL_ASIZE_X,
+        .y = tpos3.y * TCELL_ASIZE_Y,
+        .z = tpos3.z * TCELL_ASIZE_Z,
     };
 }
-inline msize_t from_tile_steps_into_tile_mstep(coord_t steps)
+inline tkey3_t get_tkey3_from_tpos3(tpos3_t tpos3)
 {
-    return (steps.z * TILE_COUNT_Y * TILE_COUNT_X) + (steps.y * TILE_COUNT_X) + steps.x;
+    return tkey3_t{
+        .x = static_cast<v1u_t>(tpos3.x + TCELL_CHALF_X),
+        .y = static_cast<v1u_t>(tpos3.y + TCELL_CHALF_Y),
+        .z = static_cast<v1u_t>(tpos3.z + TCELL_CHALF_Z),
+    };
+}
+inline tkey1_t get_tkey1_from_tkey3(tkey3_t tkey3)
+{
+    return (tkey3.z * TCELL_CFULL_Y * TCELL_CFULL_X)
+        + (tkey3.y * TCELL_CFULL_X) + tkey3.x;
 }
 
-inline auto from_coord_into_tile_distx(coord_t coord)
-{ return std::abs(from_coord_into_tile_coord(coord).x); }
-inline auto from_coord_into_tile_disty(coord_t coord)
-{ return std::abs(from_coord_into_tile_coord(coord).y); }
-
-ent_t get_tile_from_coord(coord_t coord);
-ent_t get_tile_from_tile_coord(coord_t coord);
+ent_t get_tcell_from_tpos3(tpos3_t tpos3);
+inline ent_t get_tcell_from_gpos3(gpos3_t gpos3)
+{ return get_tcell_from_tpos3(get_tpos3_from_gpos3(gpos3)); }
 
 /** vetters **/
 
-bool vet_tile_from_coord(coord_t coord);
-bool vet_tile_from_tile_coord(coord_t coord);
+bool vet_tcell_from_tpos3(tpos3_t tpos3);
+inline bool vet_tcell_from_apos3(gpos3_t gpos3)
+{ return vet_tcell_from_tpos3(get_tpos3_from_gpos3(gpos3)); }
 
-bool vet_floor_from_coord(coord_t coord);
-bool vet_floor_from_tile_coord(coord_t coord);
+bool vet_floor_from_tpos3(tpos3_t tpos3);
+inline bool vet_floor_from_gpos3(gpos3_t gpos3)
+{ return vet_floor_from_tpos3(get_tpos3_from_gpos3(gpos3)); }
 
-bool vet_block_from_coord(coord_t coord);
-bool vet_block_from_tile_coord(coord_t coord);
+bool vet_block_from_tpos3(tpos3_t tpos3);
+inline bool vet_block_from_gpos3(gpos3_t gpos3)
+{ return vet_block_from_tpos3(get_tpos3_from_gpos3(gpos3)); }
 
 /** setters **/
 
-ent_t set_tile_into_tile_coord(coord_t coord, tile_t tile);
+ent_t set_tcell_into_tpos3(tpos3_t tpos3, tcell_t tcell);
 
 _NAMESPACE_LEAVE

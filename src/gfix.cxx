@@ -1,13 +1,12 @@
+#include "head.hxx"
+
 /* headers */
 
 #include "gfix.hxx"
 #include "util.hxx"
 #include "iput.hxx"
+#include "ecos.hxx"
 #include "game.hxx"
-
-#include <GL/glut.h>
-
-#include "../lib/stbl/src/stbi.hxx"
 
 /* content */
 
@@ -15,983 +14,844 @@ _NAMESPACE_ENTER
 
 /** typedef **/
 
-struct heritage_t
-{
-    com_coord_t coord = { 0, 0, 0 };
-    com_sizes_t sizes = { 0, 0 };
-    com_scale_t scale = { 0, 0 };
-};
-struct drawable_t
-{
-    entity_t entity;
-    visual_t visual;
-    coord_t  coord;
-    heritage_t heritage;
-};
-using drawlist_t = t_array_t<drawable_t>;
-
 /** datadef **/
 
-ent_t ent_guis = entt::null;
-ent_t ent_view = entt::null;
-ent_t ent_grid = entt::null;
-com_coord_t*coord_v;
-com_direc_t*direc_v;
-com_sizes_t*sizes_v;
-com_scale_t*scale_v;
-com_ratio_t*ratio_v;
-com_recta_t*recta_v;
+struct view_t view = {
+    .entity= entt::null,
+    /* sizes */
+    .asize = _NULL,
+    .gsize = _NULL,
+    .tsize = _NULL,
+    .ratio = _NULL,
+    /* coord */
+    .apos2 = _NULL,
+    .zpos1 = _NULL,
+    .gpos3 = _NULL,
+    .tpos3 = _NULL,
+    /* geometry */
+    .direc = _NULL,
+    .grect = _NULL,
+    .trect = _NULL,
+    /* visual */
+    .visual= _NULL,
+    /* family */
+    .family= _NULL,
+};
+
+struct helpgrid_t helpgrid = {
+    .entity= entt::null,
+    /* sizes */
+    .asize = _NULL,
+    .gsize = _NULL,
+    .tsize = _NULL,
+    /* coord */
+    .gpos3 = _NULL,
+    .tpos3 = _NULL,
+    /* visual */
+    .visual= _NULL,
+    .lgrid = _NULL,
+    /* family */
+    .family= _NULL,
+};
 
 /*** system ***/
 
 struct window_t {
-    scale_t ratio = { .x = RATIO_X, .y = RATIO_Y };
-    pos2d_t coord = { .x = 0, .y = 0 };
-    sizes_t sizes = { .w = VIEW_SIZES_W, .h = VIEW_SIZES_H };
+    ratio_t ratio = { .x = VIEW_RATIO_X, .y = VIEW_RATIO_Y };
+    apos2_t apos2 = { .x = 0, .y = 0 };
+    asize_t asize = { .x = VIEW_ASIZE_X, .y = VIEW_ASIZE_Y };
 } window;
 
 /*** assets ***/
 
-image_origin_t image_list[_IMAGE_COUNT];
+imori_t imori_list[_IMORI_COUNT];
 
 /*** meta ***/
 
-constexpr const int IMAGE_NONE_MSTEP = 4;
-constexpr const com_sizes_t IMAGE_NONE_SIZES = { .w = 1, .h = 1, };
-ubyte_t IMAGE_NONE_MDATA[] = { 0xff,0xff,0xff,0xff };
+constexpr const v1s08_t IMORI_NONE_MSTEP = 4;
+constexpr const isize_t IMORI_NONE_ISIZE = { .x = 1, .y = 1, };
+ubyte_t IMORI_NONE_MDATA[] = { 0xff,0xff,0xff,0xff };
 
-constexpr const int IMAGE_TEST_MSTEP = 4;
-constexpr const com_sizes_t IMAGE_TEST_SIZES = { .w = 4, .h = 4, };
-ubyte_t IMAGE_TEST_MDATA[] = {
+constexpr const v1s08_t IMORI_TEST_MSTEP = 4;
+constexpr const isize_t IMORI_TEST_ISIZE = { .x = 4, .y = 4, };
+ubyte_t IMORI_TEST_MDATA[] = {
     0xaa,0xaa,0xaa,0x55, 0x55,0x55,0x55,0xaa, 0xaa,0xaa,0xaa,0x55, 0x55,0x55,0x55,0xaa,
     0x55,0x55,0x55,0xaa, 0xaa,0xaa,0xaa,0x55, 0x55,0x55,0x55,0xaa, 0xaa,0xaa,0xaa,0x55,
     0xaa,0xaa,0xaa,0x55, 0x55,0x55,0x55,0xaa, 0xaa,0xaa,0xaa,0x55, 0x55,0x55,0x55,0xaa,
     0x55,0x55,0x55,0xaa, 0xaa,0xaa,0xaa,0x55, 0x55,0x55,0x55,0xaa, 0xaa,0xaa,0xaa,0x55,
 };
 
-constexpr const int IMAGE_FONT_SIZES_X = 8;
-constexpr const int IMAGE_FONT_SIZES_Y = 8;
+constexpr const asize_t IMORI_FONT_ASIZE{ 8, 8 };
 
 /** actions **/
 
 void gfix_init()
 {
-    if constexpr (_FALSE)
-    {
-        std::clog << "[opengl-version] " << glGetString(GL_VERSION);
-        std::clog << std::endl << std::endl;
-    }
-    /* window */
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
-    glutInitWindowPosition(window.coord.x, window.coord.y);
-    glutInitWindowSize(window.sizes.w, window.sizes.h);
-    glutCreateWindow(_NAME_STR);
-    /* callbacks */
-    glutDisplayFunc(glutSwapBuffers);
-    glutReshapeFunc([](int sizew, int sizeh) {
-        int winratx = window.ratio.x;
-        int winraty = window.ratio.y;
-        int winrelw = sizew / winratx;
-        int winrelh = sizeh / winraty;
-        int winreld = winrelw - winrelh;
-        if (winreld == 0)
-        {
-            window.coord.x = 0;
-            window.coord.y = 0;
-        }
-        else if (winreld < 0)
-        {
-            window.coord.x = 0;
-            window.coord.y = -winreld * winraty / 2;
-            sizeh -= (window.coord.y * 2);
-        }
-        else if (winreld > 0)
-        {
-            window.coord.x = +winreld * winratx / 2;
-            window.coord.y = 0;
-            sizew -= (window.coord.x * 2);
-        }
-        window.sizes.w = sizew;
-        window.sizes.h = sizeh;
-    });
-    /* settings */
-    glDisable(GL_DEPTH_TEST);
-    glDisable(GL_STENCIL_TEST);
-    glEnable(GL_TEXTURE_1D);
-    glEnable(GL_TEXTURE_2D);
-    glDisable(GL_TEXTURE_3D);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glDisable(GL_CULL_FACE);
-    //glEnable(GL_CULL_FACE);
-    //glCullFace(GL_BACK);
-    glFrontFace(GL_CCW);
-    glEnable(GL_POINT_SMOOTH);
-    glEnable(GL_LINE_SMOOTH);
-    glShadeModel(GL_SMOOTH);
-    /* images */
-    stbi_set_flip_vertically_on_load(_TRUTH);
-    load_image_from_value_into_index(image_t{
-        .glint = 0,
-        .sizes = { .w = IMAGE_NONE_SIZES.w, .h = IMAGE_NONE_SIZES.h },
-        .mstep = IMAGE_NONE_MSTEP,
-        .msize = IMAGE_NONE_MSTEP * IMAGE_NONE_SIZES.w * IMAGE_NONE_SIZES.h,
-        .mdata = &IMAGE_NONE_MDATA[0]
-    }, _IMAGE_META_NONE);
-    load_image_from_value_into_index(image_t{
-        .glint = 0,
-        .sizes = { .w = IMAGE_TEST_SIZES.w, .h = IMAGE_TEST_SIZES.h },
-        .mstep = IMAGE_TEST_MSTEP,
-        .msize = IMAGE_TEST_MSTEP * IMAGE_TEST_SIZES.w * IMAGE_TEST_SIZES.h,
-        .mdata = &IMAGE_TEST_MDATA[0]
-    }, _IMAGE_META_TEST);
-    load_image_from_fpath_into_index("rsc/gfix/meta-logo.png", _IMAGE_META_LOGO);
-    load_image_from_fpath_into_index("rsc/gfix/game-pick.png", _IMAGE_GAME_PICK);
-    load_image_from_fpath_into_index("rsc/gfix/game-hero-ai-f1.png", _IMAGE_GAME_HERO);
-    load_image_from_fpath_into_index("rsc/gfix/tile-test-st-tmm.png", _IMAGE_TILE_TEST);
-    load_image_from_fpath_into_index("rsc/gfix/font-main-8x8.png", _IMAGE_FONT_MAIN);
     if constexpr (_TRUTH)
-    { /* view */
-        ent_view = ecos.create();
-        auto ename_v = ecos.emplace<com_ename_t>(ent_view, _ENAME_GFIX_VIEW);
-        scale_v =&ecos.emplace<com_scale_t>(ent_view, 1, 1);
-        ratio_v =&ecos.emplace<com_ratio_t>(ent_view, RATIO_X, RATIO_Y);
-        coord_v =&ecos.emplace<com_coord_t>(ent_view, 0, 0, 0);
-        direc_v =&ecos.emplace<com_direc_t>(ent_view, -0, +1);
-        sizes_v =&ecos.emplace<com_sizes_t>(ent_view, VIEW_SIZES_W, VIEW_SIZES_H);
-        recta_v =&ecos.emplace<com_recta_t>(ent_view, 0, 0, 0, 0);
-    }
-    if (_TRUTH)
-    { /* images */
-        ecos.on_construct<com_image_t>().connect<[](ecos_t&ecos, ent_t ent)
-        {
-            auto&image = ecos.get<com_image_t>(ent);
-            if (image.index >= _IMAGE_COUNT) { image.index = _IMAGE_META_TEST; }
-            if (image.sizes.w <= 0) { image.sizes.w = image_list[image.index].sizes.w; }
-            if (image.sizes.h <= 0) { image.sizes.h = image_list[image.index].sizes.h; }
+    { /* glut setup */
+        ::glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
+        ::glutInitWindowPosition(window.apos2.x, window.apos2.y);
+        ::glutInitWindowSize(window.asize.x, window.asize.y);
+        ::glutCreateWindow(_NAME_STR);
+        /* callbacks */
+        ::glutDisplayFunc(::glutSwapBuffers);
+        ::glutReshapeFunc([](int sizex, int sizey) {
+            auto winratx = window.ratio.x;
+            auto winraty = window.ratio.y;
+            auto winrelw = sizex / winratx;
+            auto winrelh = sizey / winraty;
+            auto winreld = winrelw - winrelh;
+            if (winreld == 0)
+            {
+                window.apos2.x = 0;
+                window.apos2.y = 0;
+            }
+            else if (winreld < 0)
+            {
+                window.apos2.x = 0;
+                window.apos2.y = -winreld * winraty / 2;
+                sizey -= (window.apos2.y * 2);
+            }
+            else if (winreld > 0)
+            {
+                window.apos2.x = +winreld * winratx / 2;
+                window.apos2.y = 0;
+                sizex -= (window.apos2.x * 2);
+            }
+            window.asize.x = sizex;
+            window.asize.y = sizey;
+            ::glViewport(window.apos2.x, window.apos2.y, window.asize.x, window.asize.y);
+            /* camera */
+            view.asize->x = VIEW_ASIZE_X;
+            view.asize->y = VIEW_ASIZE_Y;
+            ecos.patch<com_asize_t>(view.entity);
+            view.grect->x.l = -view.asize->x / 2 + view.apos2->x;
+            view.grect->x.r = +view.asize->x / 2 + view.apos2->x;
+            view.grect->y.b = -view.asize->y / 2 + view.apos2->y;
+            view.grect->y.t = +view.asize->y / 2 + view.apos2->y;
+            ecos.patch<com_grect_t>(view.entity);
+            view.trect->x.l = view.grect->x.l / TCELL_ASIZE_X;
+            view.trect->x.r = view.grect->x.r / TCELL_ASIZE_X;
+            view.trect->y.b = view.grect->y.b / TCELL_ASIZE_Y;
+            view.trect->y.t = view.grect->y.t / TCELL_ASIZE_Y;
+            ecos.patch<com_trect_t>(view.entity);
+            ::glMatrixMode(GL_PROJECTION);
+            ::glLoadIdentity();
+            ::gluOrtho2D(
+                view.grect->x.l, view.grect->x.r,
+                view.grect->y.b, view.grect->y.t
+            );
+        });
+    } /* glut setup */
+    if constexpr (_TRUTH)
+    { /* opengl setup */
+        _ELOG("[opengl-version] %s\n", ::glGetString(GL_VERSION));
+        ::glDisable(GL_DEPTH_TEST);
+        ::glDisable(GL_STENCIL_TEST);
+        ::glEnable(GL_TEXTURE_1D);
+        ::glEnable(GL_TEXTURE_2D);
+        ::glDisable(GL_TEXTURE_3D);
+        ::glEnable(GL_BLEND);
+        ::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+#ifdef _CONF_PLAY
+        ::glEnable(GL_CULL_FACE);
+        ::glCullFace(GL_BACK);
+        ::glFrontFace(GL_CCW);
+#else
+        ::glDisable(GL_CULL_FACE);
+#endif
+        ::glShadeModel(GL_FLAT);
+    } /* opengl setup */
+    if constexpr (_TRUTH)
+    { /* imori load */
+        stbi_set_flip_vertically_on_load(_TRUTH);
+        load_imori_from_value_into_index(imori_t{
+            .glint = 0,
+            .isize = IMORI_NONE_ISIZE,
+            .mstep = IMORI_NONE_MSTEP,
+            .msize = IMORI_NONE_MSTEP * IMORI_NONE_ISIZE.x * IMORI_NONE_ISIZE.y,
+            .mdata = &IMORI_NONE_MDATA[0]
+        }, _IMORI_META_NONE);
+        load_imori_from_value_into_index(imori_t{
+            .glint = 0,
+            .isize = IMORI_TEST_ISIZE,
+            .mstep = IMORI_TEST_MSTEP,
+            .msize = IMORI_TEST_MSTEP * IMORI_TEST_ISIZE.x * IMORI_TEST_ISIZE.y,
+            .mdata = &IMORI_TEST_MDATA[0]
+        }, _IMORI_META_TEST);
+        load_imori_from_fpath_into_index("rsc/gfix/meta-logo.png", _IMORI_META_LOGO);
+        load_imori_from_fpath_into_index("rsc/gfix/game-pick.png", _IMORI_GAME_PICK);
+        load_imori_from_fpath_into_index("rsc/gfix/game-hero-ai-f1.png", _IMORI_GAME_HERO);
+        load_imori_from_fpath_into_index("rsc/gfix/tile-test-st-tmm.png", _IMORI_TILE_TEST);
+        load_imori_from_fpath_into_index("rsc/gfix/font-main-8x8.png", _IMORI_FONT_MAIN);
+    } /* imori load */
+    if constexpr (_TRUTH)
+    { /* imreg */
+        entt::sigh_helper{ ecos }
+        .with<com_imreg_t>().on_update<[](ecos_t&ecos, ent_t ent){
+            auto&imreg = ecos.get<com_imreg_t>(ent);
+            if (imreg.index < 0 || imreg.index >= _IMORI_COUNT)
+            { imreg.index = _IMORI_META_TEST; }
+        }>().on_construct<[](ecos_t&ecos, ent_t ent){
+            auto&imreg = ecos.get<com_imreg_t>(ent);
+            if (imreg.index < 0 || imreg.index >= _IMORI_COUNT)
+            { imreg.index = _IMORI_META_TEST; }
             if (ecos.try_get<com_faces_t>(ent) != _NULL)
             { ecos.remove<com_faces_t>(ent); }
+        }>().on_destroy<[](ecos_t&ecos, ent_t ent){
+            auto&imreg = ecos.get<com_imreg_t>(ent);
         }>();
-        ecos.on_destroy<com_image_t>().connect<[](ecos_t&ecos, ent_t ent)
-        {
-            auto&image = ecos.get<com_image_t>(ent);
-        }>();
-        ecos.on_construct<com_faces_t>().connect<[](ecos_t&ecos, ent_t ent)
-        {
+        entt::sigh_helper{ ecos }
+        .with<com_faces_t>().on_update<[](ecos_t&ecos, ent_t ent){
+        }>().on_construct<[](ecos_t&ecos, ent_t ent){
             auto&faces = ecos.get<com_faces_t>(ent);
-            if (ecos.try_get<com_image_t>(ent) != _NULL)
-            { ecos.remove<com_image_t>(ent); }
-            if (ecos.try_get<com_direc_t>(ent) == _NULL)
-            { ecos.emplace<com_direc_t>(ent); }
-        }>();
-        ecos.on_destroy<com_faces_t>().connect<[](ecos_t&ecos, ent_t ent)
-        {
+        }>().on_destroy<[](ecos_t&ecos, ent_t ent){
             auto&faces = ecos.get<com_faces_t>(ent);
         }>();
-        ecos.on_construct<com_fonts_t>().connect<[](ecos_t&ecos, ent_t ent)
-        {
-            auto&fonts = ecos.get<com_fonts_t>(ent);
-            if (fonts.image.index <= 0 || fonts.image.index >= _IMAGE_COUNT)
-            { fonts.image.index = _IMAGE_FONT_MAIN; }
-            auto&image = image_list[fonts.image.index];
-            if (fonts.image.sizes.w <= 0)
-            { fonts.image.sizes.w = image.sizes.w; fonts.image.coord.x = 0; }
-            if (fonts.image.sizes.h <= 0)
-            { fonts.image.sizes.h = image.sizes.h; fonts.image.coord.y = 0; }
-        }>();
-        ecos.on_destroy<com_fonts_t>().connect<[](ecos_t&ecos, ent_t ent)
-        {
-            auto&fonts = ecos.get<com_fonts_t>(ent);
-        }>();
-    }
+    } /* imreg */
     if constexpr (_TRUTH)
-    { /* guis entity */
-        ent_guis = ecos.create();
-        ecos.emplace<com_family_t>(ent_guis, ent_guis);
-        ecos.emplace<com_visual_t>(ent_guis, _TRUTH, GUIS_LAYER);
-        ecos.emplace<com_relpos_t>(ent_guis, RELPOS_MID, RELPOS_MID);
-        ecos.emplace<com_anchor_t>(ent_guis, RELPOS_MID, RELPOS_MID);
-        ecos.emplace<com_ename_t>(ent_guis, _ENAME_GUIS);
-        ecos.emplace<com_coord_t>(ent_guis, 0, 0, GUIS_LAYER);
-        ecos.emplace<com_sizes_t>(ent_guis, sizes_v->w, sizes_v->h);
-        ecos.emplace<com_scale_t>(ent_guis, 1, 1);
+    { /* view */
+        view.entity= ecos.create();
+        /* sizes */
+        view.asize =&ecos.emplace<com_asize_t>(view.entity, asize_t{
+            .x = VIEW_ASIZE_X,
+            .y = VIEW_ASIZE_Y,
+        });
+        view.gsize = ecos.try_get<com_gsize_t>(view.entity);
+        view.tsize = ecos.try_get<com_tsize_t>(view.entity);
+        view.ratio =&ecos.emplace<com_ratio_t>(view.entity);
+        /* coord */
+        view.apos2 =&ecos.emplace<com_apos2_t>(view.entity);
+        view.zpos1 =&ecos.emplace<com_zpos1_t>(view.entity);
+        view.gpos3 = ecos.try_get<com_gpos3_t>(view.entity);
+        view.tpos3 = ecos.try_get<com_tpos3_t>(view.entity);
+        /* geometry */
+        view.direc =&ecos.emplace<com_direc_t>(view.entity, direc_t{
+            .x = -0,
+            .y = +1,
+        });
+        view.grect = ecos.try_get<com_grect_t>(view.entity);
+        view.trect = ecos.try_get<com_trect_t>(view.entity);
+        /* family */
+        view.family=&ecos.emplace<com_family_t>(view.entity);
         if constexpr (_TRUTH)
-        { /* middle screen */
-            ent_t ent_quad = ecos.create();
-            ecos.emplace<com_family_t>(ent_quad, ent_guis);
-            ecos.emplace<com_visual_t>(ent_quad, _TRUTH, 0);
-            ecos.emplace<com_relpos_t>(ent_quad, RELPOS_MID, RELPOS_MID);
-            ecos.emplace<com_anchor_t>(ent_quad, RELPOS_MID, RELPOS_MID);
-            ecos.emplace<com_coord_t>(ent_quad, 0, 0, 0);
-            ecos.emplace<com_sizes_t>(ent_quad, sizes_v->w - GUIS_SIZES_X*2, sizes_v->h - GUIS_SIZES_Y*2);
-            ecos.emplace<com_scale_t>(ent_quad, 1, 1);
-            ecos.emplace<com_ename_t>(ent_quad, _ENAME_GUIS_MM_QUAD);
-            /*
-            ecos.emplace<com_color_t>(ent_quad, 0x80);
-            ecos.emplace<com_image_t>(ent_quad, _IMAGE_META_NONE, pos2d_t{0,0}, sizes_t{0,0});
-            */
+        { /* gui-mm */
+            auto entity_q= ecos.create();
+            /* sizes */
+            ecos.emplace<com_rsize_t>(entity_q, rsize_t{
+                .x = RSIZE_MAX - GUIS_RSIZE_X*2,
+                .y = RSIZE_MAX - GUIS_RSIZE_Y*2,
+            });
+            /* visual */
+            ecos.emplace<com_visual_t>(entity_q, _TRUTH);
+            ecos.emplace<com_rlayer_t>(entity_q, 1);
+            /* family */
+            ecos.emplace<com_family_t>(entity_q, family_t{
+                .ancestor = view.entity,
+            });
             if constexpr(_TRUTH)
             { /* died */
-                auto ent_died = ecos.create();
-                ecos.emplace<com_family_t>(ent_died, ent_quad);
-                auto&visual = ecos.emplace<com_visual_t>(ent_died, _FALSE, 0x10);
-                ecos.emplace<com_relpos_t>(ent_died, RELPOS_MAX, RELPOS_MID);
-                ecos.emplace<com_anchor_t>(ent_died, RELPOS_MAX, RELPOS_MID);
-                ecos.emplace<com_coord_t>(ent_died, 0, 0, 0x10);
-                ecos.emplace<com_sizes_t>(ent_died, sizes_v->w-GUIS_SIZES_X*2, GUIS_SIZES_Y);
-                ecos.emplace<com_scale_t>(ent_died, 1, 1);
-                ecos.emplace<com_color_t>(ent_died, 0x20);
-                ecos.emplace<com_image_t>(ent_died, _IMAGE_META_NONE, pos2d_t{0,0}, sizes_t{0,0});
-                ecos.emplace<com_ename_t>(ent_died, _ENAME_GUIS_MB_TEXT);
-                ecos.emplace<com_fonts_t>(ent_died, fonts_t{
-                    .color = { .v = 0xe0 },
-                    .image = {
-                        .index = _IMAGE_FONT_MAIN,
-                        .coord = {0,0},
-                        .sizes = {0,0},
-                    },
+                auto entity_d = ecos.create();
+                /* sizes */
+                ecos.emplace<com_rsize_t>(entity_d, rsize_t{
+                    .x = RSIZE_MAX - GUIS_RSIZE_X*2,
+                    .y = GUIS_RSIZE_Y,
+                });
+                /* visual */
+                auto&visual= ecos.emplace<com_visual_t>(entity_d, _FALSE);
+                ecos.emplace<com_rlayer_t>(entity_d, 1);
+                ecos.emplace<com_color_t>(entity_d, 0xe0);
+                ecos.emplace<com_imreg_t>(entity_d, _IMORI_FONT_MAIN);
+                ecos.emplace<com_fonts_t>(entity_d, fonts_t{
                     .first = ' ',
                     .glyph = {
-                        .sizes = {8,8},
-                        .steps = {0,0},
+                        .asize = { IMORI_FONT_ASIZE.x, IMORI_FONT_ASIZE.y },
                     },
                 });
-                auto&cstring = ecos.emplace<com_cstring_t>(ent_died, 8);
-                std::snprintf(cstring.mdata, cstring.msize, "YouDied");
-                hero_rise_signal.bind([&](alive_t&alive){ visual.valid = _FALSE; });
-                hero_died_signal.bind([&](alive_t&alive){ visual.valid = _TRUTH; });
+                auto&strbuf = ecos.emplace<com_strbuf_t>(entity_d, strbuf_t{
+                    .msize = 8,
+                    .mdata = "YouDied",
+                });
+                /* family */
+                ecos.emplace<com_family_t>(entity_d, family_t{
+                    .ancestor = entity_q,
+                });
+                /* signal */
+                struct listener_t {
+                    inline void update(const alive_t&alive)
+                    {
+                        this->visual->valid = !alive.valid;
+                        this->visual =&ecos.patch<com_visual_t>(this->entity);
+                    }
+                    entity_t entity;
+                    visual_t*visual;
+                } static listener{entity_d,&visual};
+                hero_rise_sigbinder.connect<&listener_t::update>(listener);
+                hero_died_sigbinder.connect<&listener_t::update>(listener);
             } /* died */
-        }
+        } /* gui-mm */
         if constexpr (_TRUTH)
         { /* gui-mb */
-            ent_t ent_quad = ecos.create();
-            ecos.emplace<com_family_t>(ent_quad, ent_guis);
-            ecos.emplace<com_visual_t>(ent_quad, _TRUTH, 1);
-            ecos.emplace<com_relpos_t>(ent_quad, RELPOS_MID, RELPOS_MIN);
-            ecos.emplace<com_anchor_t>(ent_quad, RELPOS_MID, RELPOS_MIN);
-            ecos.emplace<com_coord_t>(ent_quad, 0, 0, 0);
-            ecos.emplace<com_sizes_t>(ent_quad, sizes_v->w, GUIS_SIZES_Y);
-            ecos.emplace<com_scale_t>(ent_quad, 1, 1);
-            ecos.emplace<com_color_t>(ent_quad, 0x40);
-            ecos.emplace<com_ename_t>(ent_quad, _ENAME_GUIS_MB_QUAD);
-            ecos.emplace<com_image_t>(ent_quad, _IMAGE_META_NONE, pos2d_t{0,0}, sizes_t{0,0});
+            auto entity_q= ecos.create();
+            /* sizes */
+            ecos.emplace<com_rsize_t>(entity_q, rsize_t{
+                .x = RSIZE_MAX,
+                .y = GUIS_RSIZE_Y,
+            });
+            /* coord */
+            ecos.emplace<com_rpos2_t>(entity_q, rpos2_t{
+                .x = RPOS2_MID,
+                .y = RPOS2_MIN,
+            });
+            ecos.emplace<com_pivot_t>(entity_q, pivot_t{
+                .x = PIVOT_MID,
+                .y = PIVOT_MIN,
+            });
+            /* visual */
+            ecos.emplace<com_visual_t>(entity_q, _TRUTH);
+            ecos.emplace<com_rlayer_t>(entity_q, 1);
+            ecos.emplace<com_color_t>(entity_q, 0x40);
+            ecos.emplace<com_imreg_t>(entity_q, _IMORI_META_NONE);
+            /* family */
+            ecos.emplace<com_family_t>(entity_q, family_t{
+                .ancestor = view.entity
+            });
             if constexpr (_TRUTH)
-            { /* text-mb */
-                auto ent_text = ecos.create();
-                ecos.emplace<com_family_t>(ent_text, ent_quad);
-                ecos.emplace<com_visual_t>(ent_text, _TRUTH, 1);
-                ecos.emplace<com_relpos_t>(ent_text, RELPOS_MID, RELPOS_MID);
-                ecos.emplace<com_anchor_t>(ent_text, RELPOS_MID, RELPOS_MID);
-                ecos.emplace<com_coord_t>(ent_text, 0, 0, 1);
-                ecos.emplace<com_sizes_t>(ent_text, sizes_v->w, GUIS_SIZES_Y);
-                ecos.emplace<com_scale_t>(ent_text, 1, 1);
-                ecos.emplace<com_color_t>(ent_text, 0xe0);
-                ecos.emplace<com_ename_t>(ent_text, _ENAME_GUIS_MB_TEXT);
-                ecos.emplace<com_fonts_t>(ent_text, fonts_t{
-                    .color = { .v = 0xe0 },
-                    .image = {
-                        .index = _IMAGE_FONT_MAIN,
-                        .coord = {0,0},
-                        .sizes = {0,0},
-                    },
+            { /* label-mb */
+                auto entity_l = ecos.create();
+                /* sizes */
+                ecos.emplace<com_rsize_t>(entity_l, rsize_t{
+                    .x = RSIZE_MAX,
+                    .y = RSIZE_MAX,
+                });
+                /* visual */
+                ecos.emplace<com_visual_t>(entity_l, _TRUTH);
+                ecos.emplace<com_rlayer_t>(entity_l, 1);
+                ecos.emplace<com_color_t>(entity_l, 0xe0);
+                ecos.emplace<com_imreg_t>(entity_l, _IMORI_FONT_MAIN);
+                ecos.emplace<com_fonts_t>(entity_l, fonts_t{
                     .first = ' ',
                     .glyph = {
-                        .sizes = {8,8},
-                        .steps = {0,0},
+                        .asize = asize_t{
+                            .x = IMORI_FONT_ASIZE.x,
+                            .y = IMORI_FONT_ASIZE.y,
+                        },
                     },
                 });
-                ecos.emplace<com_cstring_t>(ent_text, 128);
-            }
-            if constexpr (_FALSE)
-            { /* logo-mb */
-                ent_t ent_logo = ecos.create();
-                ecos.emplace<com_family_t>(ent_logo, ent_quad);
-                ecos.emplace<com_visual_t>(ent_logo, _TRUTH, 0);
-                ecos.emplace<com_relpos_t>(ent_logo, RELPOS_MAX, RELPOS_MID);
-                ecos.emplace<com_anchor_t>(ent_logo, RELPOS_MIN, RELPOS_MID);
-                ecos.emplace<com_coord_t>(ent_logo, 0, 0, 3);
-                ecos.emplace<com_sizes_t>(ent_logo, UNIT_SCALE_X, UNIT_SCALE_Y);
-                ecos.emplace<com_scale_t>(ent_logo, 1, 1);
-                ecos.emplace<com_color_t>(ent_logo, 0xff);
-                ecos.emplace<com_image_t>(ent_logo, _IMAGE_META_LOGO, pos2d_t{0,0}, sizes_t{0,0});
-            }
-        }
+                auto&strbuf = ecos.emplace<com_strbuf_t>(entity_l, strbuf_t{
+                    .msize = 128,
+                    .mdata = "",
+                });
+                if constexpr(_TRUTH)
+                { /* signal */
+                    struct listener_t { void on_update(update_event_t& event) {
+                        memset(strbuf.mdata, '\0', strbuf.msize);
+                        std::snprintf(
+                            strbuf.mdata, strbuf.msize,
+                            "mode=%s;acts=%08d;"
+                            "%c"
+                            "%s(%+d)x(%d)",
+                            get_key_mode_name(), hero.actor->count,
+                            '\n',
+                            &get_key_line()[0], get_key_narg_sign(), get_key_narg()
+                        );
+                    } strbuf_t&strbuf; } static listener{ strbuf };
+                    timer.dispatcher
+                        .sink<update_event_t>()
+                        .connect<&listener_t::on_update>(listener);
+                } /* signal */
+                /* family */
+                ecos.emplace<com_family_t>(entity_l, family_t{
+                    .ancestor = entity_q,
+                });
+            } /* label-mb */
+        } /* gui-mb */
         if constexpr (_TRUTH)
         { /* gui-mt */
-            ent_t ent_quad = ecos.create();
-            ecos.emplace<com_family_t>(ent_quad, ent_guis);
-            ecos.emplace<com_visual_t>(ent_quad, _TRUTH, 1);
-            ecos.emplace<com_relpos_t>(ent_quad, RELPOS_MID, RELPOS_MAX);
-            ecos.emplace<com_anchor_t>(ent_quad, RELPOS_MID, RELPOS_MAX);
-            ecos.emplace<com_coord_t>(ent_quad, 0, 0, 0);
-            ecos.emplace<com_color_t>(ent_quad, 0x40);
-            ecos.emplace<com_image_t>(ent_quad, _IMAGE_META_NONE, pos2d_t{0,0}, sizes_t{0,0});
-            ecos.emplace<com_ename_t>(ent_quad, _ENAME_GUIS_MT_QUAD);
-            ecos.emplace<com_sizes_t>(ent_quad, sizes_v->w, GUIS_SIZES_Y);
-            ecos.emplace<com_scale_t>(ent_quad, 1, 1);
+            auto entity_q= ecos.create();
+            /* sizes */
+            ecos.emplace<com_rsize_t>(entity_q, rsize_t{
+                .x = RSIZE_MAX,
+                .y = GUIS_RSIZE_Y,
+            });
+            /* coord */
+            ecos.emplace<com_rpos2_t>(entity_q, rpos2_t{
+                .x = RPOS2_MID,
+                .y = RPOS2_MAX,
+            });
+            ecos.emplace<com_pivot_t>(entity_q, pivot_t{
+                .x = PIVOT_MID,
+                .y = PIVOT_MAX,
+            });
+            /* visual */
+            ecos.emplace<com_visual_t>(entity_q, _TRUTH);
+            ecos.emplace<com_rlayer_t>(entity_q, 1);
+            ecos.emplace<com_color_t>(entity_q, color_t{
+                .v = 0x40,
+            });
+            ecos.emplace<com_imreg_t>(entity_q, _IMORI_META_NONE);
+            /* family */
+            ecos.emplace<com_family_t>(entity_q, family_t{
+                .ancestor = view.entity,
+            });
             if constexpr (_TRUTH)
-            { /* text-mt */
-                auto ent_text = ecos.create();
-                ecos.emplace<com_family_t>(ent_text, ent_quad);
-                ecos.emplace<com_visual_t>(ent_text, _TRUTH, 1);
-                ecos.emplace<com_relpos_t>(ent_text, RELPOS_MID, RELPOS_MID);
-                ecos.emplace<com_anchor_t>(ent_text, RELPOS_MID, RELPOS_MID);
-                ecos.emplace<com_coord_t>(ent_text, 0, 0, 1);
-                ecos.emplace<com_sizes_t>(ent_text, sizes_v->w, GUIS_SIZES_Y);
-                ecos.emplace<com_scale_t>(ent_text, 1, 1);
-                ecos.emplace<com_color_t>(ent_text, 0xe0);
-                ecos.emplace<com_ename_t>(ent_text, _ENAME_GUIS_MT_TEXT);
-                ecos.emplace<com_fonts_t>(ent_text, fonts_t{
-                    .color = { .v = 0xe0 },
-                    .image = {
-                        .index = _IMAGE_FONT_MAIN,
-                        .coord = {0,0},
-                        .sizes = {0,0},
-                    },
+            { /* label-mt */
+                auto entity_l = ecos.create();
+                /* sizes */
+                ecos.emplace<com_rsize_t>(entity_l, rsize_t{
+                    .x = RSIZE_MAX,
+                    .y = RSIZE_MAX,
+                });
+                /* visual */
+                ecos.emplace<com_visual_t>(entity_l, _TRUTH);
+                ecos.emplace<com_rlayer_t>(entity_l, 1);
+                ecos.emplace<com_color_t>(entity_l, 0xe0);
+                ecos.emplace<com_imreg_t>(entity_l, _IMORI_FONT_MAIN);
+                ecos.emplace<com_fonts_t>(entity_l, fonts_t{
                     .first = ' ',
                     .glyph = {
-                        .sizes = {8,8},
-                        .steps = {0,0},
+                        .asize = { IMORI_FONT_ASIZE.x, IMORI_FONT_ASIZE.y, },
                     },
                 });
-                ecos.emplace<com_cstring_t>(ent_text, 128);
-            }
-        }
-        if constexpr (_TRUTH)
-        { /* gui-lm */
-            ent_t ent_quad = ecos.create();
-            ecos.emplace<com_family_t>(ent_quad, ent_guis);
-            ecos.emplace<com_visual_t>(ent_quad, _TRUTH, 1);
-            ecos.emplace<com_relpos_t>(ent_quad, RELPOS_MIN, RELPOS_MID);
-            ecos.emplace<com_anchor_t>(ent_quad, RELPOS_MIN, RELPOS_MID);
-            ecos.emplace<com_coord_t>(ent_quad, 0, 0, 0);
-            auto&sizes_q = ecos.emplace<com_sizes_t>(ent_quad, GUIS_SIZES_X, sizes_v->h - GUIS_SIZES_Y*2);
-            ecos.emplace<com_scale_t>(ent_quad, 1, 1);
-            ecos.emplace<com_color_t>(ent_quad, 0x40);
-            ecos.emplace<com_ename_t>(ent_quad, _ENAME_GUIS_LM_QUAD);
-            ecos.emplace<com_image_t>(ent_quad, _IMAGE_META_NONE, pos2d_t{0,0}, sizes_t{0,0});
-            if constexpr (_TRUTH)
-            { /* text-lm */
-                auto ent_text = ecos.create();
-                ecos.emplace<com_family_t>(ent_text, ent_quad);
-                ecos.emplace<com_visual_t>(ent_text, _TRUTH, 1);
-                ecos.emplace<com_relpos_t>(ent_text, RELPOS_MIN, RELPOS_MIN);
-                ecos.emplace<com_anchor_t>(ent_text, RELPOS_MIN, RELPOS_MIN);
-                ecos.emplace<com_coord_t>(ent_text, 0, 0, 0);
-                ecos.emplace<com_sizes_t>(ent_text, sizes_q.w, sizes_q.h);
-                ecos.emplace<com_scale_t>(ent_text, 1, 1);
-                ecos.emplace<com_color_t>(ent_text, 0xe0);
-                ecos.emplace<com_ename_t>(ent_text, _ENAME_GUIS_LM_TEXT);
-                ecos.emplace<com_fonts_t>(ent_text, fonts_t{
-                    .color = { .v = 0xe0 },
-                    .image = {
-                        .index = _IMAGE_FONT_MAIN,
-                        .coord = {0,0},
-                        .sizes = {0,0},
-                    },
-                    .first = ' ',
-                    .glyph = {
-                        .sizes = {8,8},
-                        .steps = {0,0},
-                    },
-                });
-                auto&cstring = ecos.emplace<com_cstring_t>(ent_text, 128);
-            }
-        }
-        if constexpr (_TRUTH)
-        { /* gui-rm */
-            ent_t ent_quad = ecos.create();
-            ecos.emplace<com_family_t>(ent_quad, ent_guis);
-            ecos.emplace<com_visual_t>(ent_quad, _TRUTH, 1);
-            ecos.emplace<com_relpos_t>(ent_quad, RELPOS_MAX, RELPOS_MID);
-            ecos.emplace<com_anchor_t>(ent_quad, RELPOS_MAX, RELPOS_MID);
-            ecos.emplace<com_coord_t>(ent_quad, 0, 0, 0);
-            auto&sizes_q = ecos.emplace<com_sizes_t>(ent_quad, GUIS_SIZES_X, sizes_v->h - GUIS_SIZES_Y*2);
-            ecos.emplace<com_scale_t>(ent_quad, 1, 1);
-            ecos.emplace<com_color_t>(ent_quad, 0x40);
-            ecos.emplace<com_ename_t>(ent_quad, _ENAME_GUIS_RM_QUAD);
-            ecos.emplace<com_image_t>(ent_quad, _IMAGE_META_NONE, pos2d_t{0,0}, sizes_t{0,0});
-            if constexpr (_TRUTH)
-            { /* text-rm */
-                auto ent_text = ecos.create();
-                ecos.emplace<com_family_t>(ent_text, ent_quad);
-                ecos.emplace<com_visual_t>(ent_text, _TRUTH, 1);
-                ecos.emplace<com_relpos_t>(ent_text, RELPOS_MIN, RELPOS_MIN);
-                ecos.emplace<com_anchor_t>(ent_text, RELPOS_MIN, RELPOS_MIN);
-                ecos.emplace<com_coord_t>(ent_text, 0, 0, 0);
-                ecos.emplace<com_sizes_t>(ent_text, sizes_q.w, sizes_q.h);
-                ecos.emplace<com_scale_t>(ent_text, 1, 1);
-                ecos.emplace<com_color_t>(ent_text, 0xe0);
-                ecos.emplace<com_ename_t>(ent_text, _ENAME_GUIS_RM_TEXT);
-                ecos.emplace<com_fonts_t>(ent_text, fonts_t{
-                    .color = { .v = 0xe0 },
-                    .image = {
-                        .index = _IMAGE_FONT_MAIN,
-                        .coord = {0,0},
-                        .sizes = {0,0},
-                    },
-                    .first = ' ',
-                    .glyph = {
-                        .sizes = {8,8},
-                        .steps = {0,0},
-                    },
-                });
-                auto&cstring = ecos.emplace<com_cstring_t>(ent_text, 128);
-                auto update = [&](coord_t coord_p){
-                    coord_p = from_coord_into_tile_coord(coord_p);
+                auto&strbuf = ecos.emplace<com_strbuf_t>(entity_l, 128);
+                /* signal */
+                struct listener_t { void on_update(update_event_t& event) {
+                    memset(strbuf.mdata, '\0', strbuf.msize);
                     std::snprintf(
-                        cstring.mdata, cstring.msize,
-                        "pick\n"
-                        "========%c"
-                        "coord\n"
-                        "x%+04i\n"
-                        "y%+04i\n"
-                        "z%+04i\n"
-                        "========%c",
+                        strbuf.mdata, strbuf.msize,
+                        "now=%03zu.%03zu;fps=%05zu;"
+                        "%c"
+                        "g(x%+04iy%+04iz%+04i)d(x%+1dy%+1d)"
+                        "%c",
+                        (timer.now_mil / 1000) % 1000, timer.now_mil % 1000, timer.fps_num,
                         '\n',
-                        coord_p.x, coord_p.y, coord_p.z,
+                        view.gpos3->x, view.gpos3->y, view.gpos3->z,
+                        view.direc->x, view.direc->y,
                         '\0'
                     );
-                };
-                update({0,0,0});
-                pick_step_signal.bind(update);
-            }
-        }
+                } strbuf_t&strbuf; } static listener{ strbuf };
+                /* family */
+                ecos.emplace<com_family_t>(entity_l, family_t{
+                    .ancestor = entity_q,
+                });
+            } /* label-mt */
+        } /* gui-mt */
+        if constexpr (_TRUTH)
+        { /* gui-lm */
+            ent_t entity_q = ecos.create();
+            /* sizes */
+            ecos.emplace<com_rsize_t>(entity_q, rsize_t{
+                .x = GUIS_RSIZE_X,
+                .y = RSIZE_MAX - GUIS_RSIZE_Y*2,
+            });
+            /* visual */
+            ecos.emplace<com_visual_t>(entity_q, _TRUTH);
+            ecos.emplace<com_rlayer_t>(entity_q, 1);
+            ecos.emplace<com_color_t>(entity_q, color_t{
+                .v = 0x40,
+            });
+            ecos.emplace<com_imreg_t>(entity_q, _IMORI_META_NONE);
+            /* coord */
+            ecos.emplace<com_rpos2_t>(entity_q, rpos2_t{
+                .x = RPOS2_MIN,
+                .y = RPOS2_MID,
+            });
+            ecos.emplace<com_pivot_t>(entity_q, pivot_t{
+                .x = PIVOT_MIN,
+                .y = PIVOT_MID,
+            });
+            /* family */
+            ecos.emplace<com_family_t>(entity_q, family_t{
+                .ancestor = view.entity,
+            });
+            if constexpr (_TRUTH)
+            { /* label-lm */
+                auto entity_l = ecos.create();
+                /* sizes */
+                ecos.emplace<com_rsize_t>(entity_l, rsize_t{
+                    .x = RSIZE_MAX,
+                    .y = RSIZE_MAX,
+                });
+                /* coord */
+                ecos.emplace<com_rpos2_t>(entity_l, rpos2_t{
+                    .x = RPOS2_MIN,
+                    .y = RPOS2_MIN,
+                });
+                ecos.emplace<com_pivot_t>(entity_l, pivot_t{
+                    .x = PIVOT_MIN,
+                    .y = PIVOT_MIN,
+                });
+                /* visual */
+                ecos.emplace<com_visual_t>(entity_l, _TRUTH);
+                ecos.emplace<com_rlayer_t>(entity_l, 1);
+                ecos.emplace<com_color_t>(entity_l, 0xe0);
+                ecos.emplace<com_imreg_t>(entity_l, _IMORI_FONT_MAIN);
+                ecos.emplace<com_fonts_t>(entity_l, fonts_t{
+                    .first = ' ',
+                    .glyph = {
+                        .asize = { IMORI_FONT_ASIZE.x, IMORI_FONT_ASIZE.y, },
+                    },
+                });
+                auto&strbuf = ecos.emplace<com_strbuf_t>(entity_l, strbuf_t{
+                    .msize = 128,
+                    .mdata = "",
+                });
+                /* family */
+                ecos.emplace<com_family_t>(entity_l, family_t{
+                    .ancestor = entity_q,
+                });
+            } /* label-lm */
+        } /* gui-lm */
+        if constexpr (_TRUTH)
+        { /* gui-rm */
+            auto entity_q = ecos.create();
+            /* coord */
+            ecos.emplace<com_rpos2_t>(entity_q, rpos2_t{
+                .x = RPOS2_MAX,
+                .y = RPOS2_MID,
+            });
+            ecos.emplace<com_pivot_t>(entity_q, pivot_t{
+                .x = PIVOT_MAX,
+                .y = PIVOT_MID,
+            });
+            /* sizes */
+            ecos.emplace<com_rsize_t>(entity_q, rsize_t{
+                .x = GUIS_RSIZE_X,
+                .y = RSIZE_MAX - GUIS_RSIZE_Y*2,
+            });
+            /* visual */
+            ecos.emplace<com_visual_t>(entity_q, _TRUTH);
+            ecos.emplace<com_rlayer_t>(entity_q, 1);
+            ecos.emplace<com_color_t>(entity_q, color_t{
+                .v = 0x40,
+            });
+            ecos.emplace<com_imreg_t>(entity_q, _IMORI_META_NONE);
+            /* family */
+            ecos.emplace<com_family_t>(entity_q, family_t{
+                .ancestor = view.entity,
+            });
+            if constexpr (_TRUTH)
+            { /* label-rm */
+                auto entity_l = ecos.create();
+                /* sizes */
+                ecos.emplace<com_rsize_t>(entity_l, rsize_t{
+                    .x = RSIZE_MAX,
+                    .y = RSIZE_MAX,
+                });
+                /* coord */
+                ecos.emplace<com_rpos2_t>(entity_l, rpos2_t{
+                    .x = RPOS2_MIN,
+                    .y = RPOS2_MIN,
+                });
+                ecos.emplace<com_pivot_t>(entity_l, pivot_t{
+                    .x = PIVOT_MIN,
+                    .y = PIVOT_MIN,
+                });
+                /* visual */
+                ecos.emplace<com_visual_t>(entity_l, _TRUTH);
+                ecos.emplace<com_rlayer_t>(entity_l, 1);
+                ecos.emplace<com_color_t>(entity_l, 0xe0);
+                ecos.emplace<com_imreg_t>(entity_l, imreg_t{
+                    .index = _IMORI_FONT_MAIN,
+                    .rsize = rsize_t{ RSIZE_MAX, RSIZE_MAX },
+                });
+                ecos.emplace<com_fonts_t>(entity_l, fonts_t{
+                    .first = ' ',
+                    .glyph = {
+                        .asize = { IMORI_FONT_ASIZE.x, IMORI_FONT_ASIZE.y, },
+                    },
+                });
+                auto&strbuf = ecos.emplace<com_strbuf_t>(entity_l, strbuf_t{
+                    .msize = 128,
+                    .mdata = "pick info",
+                });
+                /* family */
+                ecos.emplace<com_family_t>(entity_l, entity_q);
+                /* signal */
+                struct listener_t {
+                    inline void update()
+                    {
+                        std::snprintf(
+                            strbuf.mdata, strbuf.msize,
+                            "pick\n"
+                            "========%c"
+                            "tpose\n"
+                            "x%+04i\n"
+                            "y%+04i\n"
+                            "z%+04i\n"
+                            "========%c",
+                            '\n',
+                            pick.tpos3->x,
+                            pick.tpos3->y,
+                            pick.tpos3->z,
+                            '\0'
+                        );
+                    }
+                    strbuf_t&strbuf;
+                } static listener{strbuf};
+                pick_step_sigbinder.connect<&listener_t::update>(listener);
+            } /* label-rm */
+        } /* gui-rm */
     }
     if constexpr (_TRUTH)
-    { /* grid */
-        ent_grid = ecos.create();
-        ecos.emplace<com_family_t>(ent_grid);
-        ecos.emplace<com_visual_t>(ent_grid, _TRUTH, 0);
-        ecos.emplace<com_anchor_t>(ent_grid, RELPOS_MID, RELPOS_MID);
-        ecos.emplace<com_coord_t>(ent_grid, 0, 0, 0);
-        ecos.emplace<com_sizes_t>(ent_grid, TILE_SCALE_X * 3, TILE_SCALE_Y * 3);
-        ecos.emplace<com_scale_t>(ent_grid, 1, 1);
-        ecos.emplace<com_color_t>(ent_grid, 0x80);
-        ecos.emplace<com_ename_t>(ent_grid, _ENAME_GFIX_GRID);
-        ecos.emplace<com_grid_t>(ent_grid,
-            grid_t{
-                .cells = { TILE_SCALE_X, TILE_SCALE_Y },
-                .tails = { TILE_SCALE_X, TILE_SCALE_Y },
-                .width = 1,
-            }
-        );
-        if constexpr (_TRUTH)
-        { /* hero */
-            auto ent_hero = get_by_ename({_ENAME_GAME_HERO});
-            if (ecos.valid(ent_hero))
-            { set_ancestor(ent_grid, ent_hero); }
-        } /* hero */
-    } /* grid */
-}
-
-/*** drawing ***/
-
-static void draw_init()
-{
-}
-
-extern void proc_list(drawlist_t&drawlist);
-void draw_unit(drawable_t&drawable)
-{
-    bool can_draw = _TRUTH;
-    auto&entity = drawable.entity;
-    auto&heritage = drawable.heritage;
-    /* props */
-    auto coord_e = drawable.coord;
-    auto&coord_a = heritage.coord;
-    coord_e.z += coord_a.z;
-    auto color_e = color_t{ .v = 0xff };
-    if (auto*temp = ecos.try_get<com_color_t>(entity)) { color_e =*temp; }
-    if (ecos.try_get<com_tile_t>(entity))
-    {
-        auto dif_z = coord_e.z - coord_v->z;
-        auto dif_y = coord_e.y - coord_v->y;
-        dif_y += TILE_SCALE_Y * dif_z;
-        dif_y = std::abs(dif_y);
-        auto dif_x = coord_e.x - coord_v->x;
-        dif_x = std::abs(dif_x);
-        auto rng_x = TILE_SCALE_X * 2;
-        auto rng_y = TILE_SCALE_Y * 2;
-        auto coord_f = from_coord_into_tile_coord(coord_e);
-        coord_f.y -= 1;
-        coord_f.z += 1;
-        if (vet_tile_from_tile_coord(coord_f))
-        { can_draw = _FALSE; }
-        if (dif_z == 0 && ((_FALSE
-        ) || (_TRUTH
-        && dif_x <= (rng_x)
-        && dif_y <= (rng_y - TILE_SCALE_Y)
-        ) || (_TRUTH
-        && dif_x <= (rng_x - TILE_SCALE_X)
-        && dif_y <= (rng_y)
-        ))) { can_draw = _TRUTH; }
-        else if (dif_z > 0)
-        {
-            if ((_FALSE
-            ) || (_TRUTH
-            && dif_x <= (rng_x)
-            && dif_y <= (rng_y - TILE_SCALE_Y*1)
-            ) || (_TRUTH
-            && dif_x <= (rng_x - TILE_SCALE_X*1)
-            && dif_y <= (rng_y)
-            )) { can_draw = _FALSE; }
-        }
-        coord_e.y += TILE_SCALE_Y * dif_z;
-        color_e.v /= std::abs(get_num_sign(dif_z)+dif_z);
-    }
-    auto&sizes_a = heritage.sizes;
-    auto sizes_e = sizes_t{ .w = UNIT_SCALE_X, .h = UNIT_SCALE_Y };
-    if (auto*temp = ecos.try_get<com_sizes_t>(entity)) { sizes_e =*temp; }
-    auto&scale_a = heritage.scale;
-    auto scale_e = scale_t{ .x = 1, .y = 1 };
-    if (auto*temp = ecos.try_get<com_scale_t>(entity)) { scale_e =*temp; }
-    scale_e.x *= scale_a.x;
-    scale_e.y *= scale_a.y;
-    auto anchor_e = anchor_t{ RELPOS_MID, RELPOS_MID };
-    if (auto*temp = ecos.try_get<com_anchor_t>(entity)) { anchor_e =*temp; }
-    auto relpos_e = relpos_t{ RELPOS_MID, RELPOS_MID };
-    if (auto*temp = ecos.try_get<com_relpos_t>(entity)) { relpos_e =*temp; }
-    /* direc */
-    auto coord_u = coord_e;
-    if constexpr (_FALSE)
-    {
-        while (direc_v->y != +1)
-        {
-            *direc_v = get_vec_turn(*direc_v);
-            coord_u = get_vec_turn(coord_u);
-        }
-    }
-    /* coord */
-    auto coord_sl = coord_u.x;
-    auto coord_sr = coord_u.x;
-    auto coord_sb = coord_u.y;
-    auto coord_st = coord_u.y;
-    /** relpos **/
-    auto moved_sx = (sizes_a.w * relpos_e.x) / RELPOS_DIV;
-    auto moved_sy = (sizes_a.h * relpos_e.y) / RELPOS_DIV;
-    coord_sl = (coord_sl + moved_sx) * scale_a.x + coord_a.x;
-    coord_sr = (coord_sr + moved_sx) * scale_a.x + coord_a.x;
-    coord_sb = (coord_sb + moved_sy) * scale_a.y + coord_a.y;
-    coord_st = (coord_st + moved_sy) * scale_a.y + coord_a.y;
-    coord_e.x = (coord_e.x + moved_sx) * scale_a.x + coord_a.x;
-    coord_e.y = (coord_e.y + moved_sy) * scale_a.y + coord_a.y;
-    /** anchor **/
-    coord_sl += (sizes_e.w * scale_e.x * (RELPOS_MIN - anchor_e.x)) / RELPOS_DIV;
-    coord_sr += (sizes_e.w * scale_e.x * (RELPOS_MAX - anchor_e.x)) / RELPOS_DIV;
-    coord_sb += (sizes_e.h * scale_e.y * (RELPOS_MIN - anchor_e.y)) / RELPOS_DIV;
-    coord_st += (sizes_e.h * scale_e.y * (RELPOS_MAX - anchor_e.y)) / RELPOS_DIV;
-    coord_e.x -= (sizes_e.w * scale_e.x * anchor_e.x) / RELPOS_DIV;
-    coord_e.y -= (sizes_e.h * scale_e.y * anchor_e.y) / RELPOS_DIV;
-    if (can_draw && ((_FALSE
-    ) || (_TRUTH
-    && ((coord_sl <= recta_v->sr) && (coord_sb <= recta_v->st))
-    && ((coord_sl >= recta_v->sl) && (coord_sb >= recta_v->sb))
-    ) || (_TRUTH
-    && ((coord_sl <= recta_v->sr) && (coord_st <= recta_v->st))
-    && ((coord_sl >= recta_v->sl) && (coord_st >= recta_v->sb))
-    ) || (_TRUTH
-    && ((coord_sr <= recta_v->sr) && (coord_sb <= recta_v->st))
-    && ((coord_sr >= recta_v->sl) && (coord_sb >= recta_v->sb))
-    ) || (_TRUTH
-    && ((coord_sr <= recta_v->sr) && (coord_st <= recta_v->st))
-    && ((coord_sr >= recta_v->sl) && (coord_st >= recta_v->sb))
-    ) || (_TRUTH
-    && ((coord_sl <= recta_v->sl) && (coord_sr >= recta_v->sr))
-    && ((coord_sb >= recta_v->sb) || (coord_st >= recta_v->st))
-    ) || (_TRUTH
-    && ((coord_sb <= recta_v->sb) && (coord_st >= recta_v->st))
-    && ((coord_sl >= recta_v->sl) || (coord_sr <= recta_v->sr))
-    ))) { /* draw */
-        glColor3ub(color_e.v, color_e.v, color_e.v);
-        auto*image = ecos.try_get<com_image_t>(entity);
-        if (auto*faces = ecos.try_get<com_faces_t>(entity))
-        {
-            auto direc_e = direc_t{+0,-1};
-            if (auto*temp = ecos.try_get<com_direc_t>(entity)) { direc_e =*temp; }
-            auto eface = _EFACE_F;
-            auto dotec = direc_v->x * direc_e.x + direc_v->y * direc_e.y;
-            if (dotec == 0)
-            {
-                if (direc_v->x == 0)
-                {
-                    if (direc_v->y == direc_e.x) { eface = _EFACE_R; }
-                    else { eface = _EFACE_L; }
-                }
-                else
-                {
-                    if (direc_v->x == direc_e.y) { eface = _EFACE_L; }
-                    else { eface = _EFACE_R; }
-                }
-            }
-            else if (dotec == -1) { eface = _EFACE_F; }
-            else if (dotec == +1) { eface = _EFACE_B; }
-            image =&faces->ilist[eface]; 
-        }
-        if (image)
-        {
-            auto image_region = *image;
-            auto image_index = image_region.index;
-            auto image_glint = 0u;
-            auto image_sx = image_region.coord.x;
-            auto image_sy = image_region.coord.y;
-            auto image_uw = image_region.sizes.w;
-            auto image_uh = image_region.sizes.h;
-            auto image_fl = static_cast<v1f_t>(image_sx);
-            auto image_fr = static_cast<v1f_t>(image_uw) + image_fl;
-            auto image_fb = static_cast<v1f_t>(image_sy);
-            auto image_ft = static_cast<v1f_t>(image_uh) + image_fb;
-            if (image_index < _IMAGE_COUNT)
-            {
-                auto&image_origin = image_list[image_index];
-                image_glint = image_origin.glint;
-                auto image_fw = static_cast<v1f_t>(image_origin.sizes.w);
-                auto image_fh = static_cast<v1f_t>(image_origin.sizes.h);
-                image_fl /= image_fw; image_fr /= image_fw;
-                image_fb /= image_fh; image_ft /= image_fh;
-            }
-            glBindTexture(GL_TEXTURE_2D, image_glint);
-            glBegin(GL_QUADS);
-            glTexCoord2f(image_fl, image_fb);
-            glVertex2i(coord_sl, coord_sb);
-            glTexCoord2f(image_fr, image_fb);
-            glVertex2i(coord_sr, coord_sb);
-            glTexCoord2f(image_fr, image_ft);
-            glVertex2i(coord_sr, coord_st);
-            glTexCoord2f(image_fl, image_ft);
-            glVertex2i(coord_sl, coord_st);
-            glEnd();
-            glBindTexture(GL_TEXTURE_2D, 0);
-        }
-        if (auto*grid = ecos.try_get<grid_t>(entity))
-        {
-            auto cells = grid->cells;
-            auto tails = grid->tails;
-            auto width = grid->width;
-            glBegin(GL_QUADS);
-            auto fromy = coord_sb - tails.h;
-            auto intoy = coord_st + tails.h;
-            for (auto stepx = coord_sl; stepx <= coord_sr; stepx += cells.w)
-            {
-                glVertex2i(stepx - width, fromy); glVertex2i(stepx + width, fromy);
-                glVertex2i(stepx + width, intoy); glVertex2i(stepx - width, intoy);
-            }
-            auto fromx = coord_sl - tails.w;
-            auto intox = coord_sr + tails.w;
-            for (auto stepy = coord_sb; stepy <= coord_st; stepy += cells.h)
-            {
-                glVertex2i(fromx, stepy - width); glVertex2i(fromx, stepy + width);
-                glVertex2i(intox, stepy + width); glVertex2i(intox, stepy - width);
-            }
-            glEnd();
-        }
-        if (auto*cstring = ecos.try_get<com_cstring_t>(entity))
-        {
-            auto fonts = fonts_t{};
-            if (auto*temp = ecos.try_get<fonts_t>(entity)) { fonts =*temp; }
-            glColor3ub(fonts.color.v, fonts.color.v, fonts.color.v);
-            const auto&image = image_list[fonts.image.index];
-            auto image_uw = static_cast<v1u_t>(fonts.image.sizes.w);
-            auto image_uh = static_cast<v1u_t>(fonts.image.sizes.h);
-            auto image_fw = static_cast<v1f_t>(fonts.image.sizes.w);
-            auto image_fh = static_cast<v1f_t>(fonts.image.sizes.h);
-            /* glyph is a single chracter from the image */
-            auto glyph_count_uw = static_cast<v1u_t>(image_uw / IMAGE_FONT_SIZES_X);
-            auto glyph_count_uh = static_cast<v1u_t>(image_uh / IMAGE_FONT_SIZES_Y);
-            auto glyph_uw = static_cast<v1u_t>(fonts.glyph.sizes.w + fonts.glyph.steps.x);
-            auto glyph_uh = static_cast<v1u_t>(fonts.glyph.sizes.h + fonts.glyph.steps.y);
-            auto glyph_fw = static_cast<v1f_t>(fonts.glyph.sizes.w + fonts.glyph.steps.x) / image_fw;
-            auto glyph_fh = static_cast<v1f_t>(fonts.glyph.sizes.h + fonts.glyph.steps.y) / image_fh;
-            auto glyph_sl = 0.0f;
-            auto glyph_sr = 0.0f;
-            auto glyph_sb = 0.0f;
-            auto glyph_st = 0.0f;
-            auto mdata = cstring->mdata;
-            auto msize = cstring->msize;
-            auto count_uw = 1, count_uw_iter = 0;
-            auto count_uh = 1;
-#if _FALSE
-            for (auto iter = 0; iter < msize; iter++)
-#else
-            for (auto iter = 0; iter < msize && mdata[iter] > 0; iter++)
-#endif
-            {
-                int mbyte = mdata[iter];
-                if (mbyte == '\n')
-                { count_uh += 1; count_uw_iter = 0; }
-                else
-                { count_uw = std::max(count_uw, ++count_uw_iter); }
-            }
-            /* label */
-            auto label_sl = coord_sl;
-            auto label_sr = coord_sr;
-            auto label_sb = coord_sb;
-            auto label_st = coord_st;
-            auto label_uw = (label_sr - label_sl);
-            auto label_uh = (label_st - label_sb);
-            /* sizes */
-            auto sizes_uw = (label_uw / count_uw);
-            auto sizes_uh = (label_uh / count_uh);
-            sizes_uw = std::min(sizes_uh, sizes_uw);
-            sizes_uh = std::min(sizes_uw, sizes_uh);
-            /* coord */
-#if _TRUTH
-            auto coord = pos2d_t{ label_sl, label_st, };
-#else
-            auto relpos = relpos_t{ RELPOS_MAX - anchor_e.x, RELPOS_MIN - anchor_e.y };
-            auto coord = pos2d_t{
-                label_sl + (label_uw * relpos.x / RELPOS_DIV),
-                label_st + (label_uh * relpos.y / RELPOS_DIV),
-            };
-#endif
-#if _TRUTH
-#else
-            auto anchor = anchor_t{ RELPOS_MAX - anchor_e.x, RELPOS_MIN - anchor_e.y };
-            auto coord_sl = label_sl + (sizes_uw * (RELPOS_MIN - anchor.x)) / RELPOS_DIV;
-            auto coord_sr = label_sl + (sizes_uw * (RELPOS_MAX - anchor.x)) / RELPOS_DIV;
-            auto coord_sb = label_st + (sizes_uh * (RELPOS_MIN - anchor.y)) / RELPOS_DIV;
-            auto coord_st = label_st + (sizes_uh * (RELPOS_MAX - anchor.y)) / RELPOS_DIV;
-#endif
-            //*/
-            auto coord_sl = coord.x;
-            auto coord_sr = coord.x + sizes_uw;
-            auto coord_sb = coord.y - sizes_uh;
-            auto coord_st = coord.y;
-            //*/
-            /* offset */
-            moved_sx = 0;
-            moved_sy = 0;
-            glBindTexture(GL_TEXTURE_2D, image.glint);
-            glBegin(GL_QUADS);
-#if _FALSE
-            for (auto iter = 0; iter < msize; iter++)
-#else
-            for (auto iter = 0; iter < msize && mdata[iter] > 0; iter++)
-#endif
-            {
-                int mbyte = mdata[iter];
-                if (mbyte == '\n')
-                {
-                    coord_sl -= moved_sx;
-                    coord_sr -= moved_sx;
-                    moved_sx = 0;
-                    coord_sb -= sizes_uh;
-                    coord_st -= sizes_uh;
-                    moved_sy -= sizes_uh;
-                    continue;
-                }
-                mbyte = std::max(mdata[iter], fonts.first) - fonts.first;
-                auto stepx = (mbyte % glyph_count_uw);
-                glyph_sl = static_cast<v1f_t>(stepx * glyph_uw);
-                glyph_sl = glyph_sl / image_fw;
-                glyph_sr = glyph_sl + glyph_fw;
-                auto image_stepy = glyph_count_uh - (mbyte / glyph_count_uw);
-                glyph_st = static_cast<v1f_t>(image_stepy * glyph_uw);
-                glyph_st = glyph_st / image_fh;
-                glyph_sb = glyph_st - glyph_fh;
-                glTexCoord2f(glyph_sl, glyph_sb);
-                glVertex2i(coord_sl, coord_sb);
-                glTexCoord2f(glyph_sr, glyph_sb);
-                glVertex2i(coord_sr, coord_sb);
-                glTexCoord2f(glyph_sr, glyph_st);
-                glVertex2i(coord_sr, coord_st);
-                glTexCoord2f(glyph_sl, glyph_st);
-                glVertex2i(coord_sl, coord_st);
-                coord_sl += sizes_uw;
-                coord_sr += sizes_uw;
-                moved_sx += sizes_uw;
-            }
-            glEnd();
-            glBindTexture(GL_TEXTURE_2D, 0);
-            glBegin(GL_LINE_STRIP);
-            glVertex2i(label_sl, label_sb);
-            glVertex2i(label_sr, label_sb);
-            glVertex2i(label_sr, label_st);
-            glVertex2i(label_sl, label_st);
-            glEnd();
-        }
-    }
-    /* hierarchy */
-    if (auto*family = ecos.try_get<com_family_t>(drawable.entity))
-    {
-        drawlist_t drawlist;
-        call_for_children(entity, [&](ent_t children){
-            if (auto*visual = ecos.try_get<com_visual_t>(children))
-            {
-                if (visual->valid)
-                {
-                    if (auto*coord = ecos.try_get<com_coord_t>(children))
-                    {
-                        drawlist.push_back(drawable_t{
-                            .entity = children,
-                            .visual = *visual,
-                            .coord = *coord,
-                            .heritage = {
-                                .coord = coord_e,
-                                .sizes = sizes_e,
-                                .scale = scale_e,
-                            }
-                        });
-                    }
-                }
-            }
+    { /* helpgrid */
+        helpgrid.entity= ecos.create();
+        /* sizes */
+        helpgrid.asize =&ecos.emplace<com_asize_t>(helpgrid.entity, asize_t{
+            .x = TCELL_ASIZE_X * 3,
+            .y = TCELL_ASIZE_Y * 3,
         });
-        proc_list(drawlist);
-    }
-}
-void proc_list(drawlist_t&drawlist)
-{
-    auto head = drawlist.begin();
-    auto tail = drawlist.end();
-    std::sort(head, tail, [](const drawable_t& dl, const drawable_t& dr) {
-        if (dl.coord.z == dr.coord.z) { return dl.visual.layer < dr.visual.layer; }
-        else { return dl.coord.z < dr.coord.z; }
-    });
-    for (auto iter = head; iter != tail; iter++)
-    {
-        if (iter->visual.valid) { draw_unit(*iter); }
-    }
+        helpgrid.gsize = ecos.try_get<com_gsize_t>(helpgrid.entity);
+        helpgrid.tsize = ecos.try_get<com_tsize_t>(helpgrid.entity);
+        /* coord */
+        helpgrid.gpos3 = ecos.try_get<com_gpos3_t>(helpgrid.entity);
+        helpgrid.tpos3 = ecos.try_get<com_tpos3_t>(helpgrid.entity);
+        /* visual */
+        helpgrid.visual=&ecos.emplace<com_visual_t>(helpgrid.entity, _TRUTH);
+        ecos.emplace<com_rlayer_t>(helpgrid.entity, 1);
+        ecos.emplace<com_color_t>(helpgrid.entity, color_t{
+            .v = 0x20,
+        });
+        helpgrid.lgrid =&ecos.emplace<com_lgrid_t>(helpgrid.entity, lgrid_t{
+            .cells = {
+                .x = TCELL_ASIZE_X,
+                .y = TCELL_ASIZE_Y,
+            },
+            .tails = {
+                .x = TCELL_ASIZE_X,
+                .y = TCELL_ASIZE_Y,
+            },
+            .lsize = {
+                .x = 1,
+                .y = 1,
+            },
+        });
+        /* family */
+        helpgrid.family=&ecos.emplace<com_family_t>(helpgrid.entity, family_t{
+            .ancestor = hero.entity,
+        });
+        if (ecos.valid(hero.entity))
+        {
+            if (!vet_ancestor(helpgrid.entity, hero.entity))
+            {
+                set_ancestor(helpgrid.entity, hero.entity);
+            }
+        }
+    } /* helpgrid */
 }
 
 void gfix_loop()
 {
-    /* window */
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glViewport(window.coord.x, window.coord.y, window.sizes.w, window.sizes.h);
-    /* camera */
-    sizes_v->w = VIEW_SIZES_W;
-    sizes_v->h = VIEW_SIZES_H;
-    recta_v->sl = coord_v->x - sizes_v->w * scale_v->x / 2;
-    recta_v->sr = coord_v->x + sizes_v->w * scale_v->x / 2;
-    recta_v->sb = coord_v->y - sizes_v->h * scale_v->y / 2;
-    recta_v->st = coord_v->y + sizes_v->h * scale_v->y / 2;
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluOrtho2D(recta_v->sl, recta_v->sr, recta_v->sb, recta_v->st);
-    /* entity component system */
-    if constexpr(_TRUTH)
-    { /* middle bot text */
-        auto&cstring = ecos.get<com_cstring_t>(get_by_ename(ename_t{_ENAME_GUIS_MB_TEXT}));
-        memset(cstring.mdata, '\0', cstring.msize);
-        std::snprintf(
-            cstring.mdata, cstring.msize,
-            "mode=%s;acts=%08d;"
-            "%c"
-            "%s(%+d)x(%d)",
-            get_key_mode_name(), get_action_count(),
-            '\n',
-            &get_key_line()[0], get_key_narg_sign(), get_key_narg()
-        );
-    }
-    if constexpr(_TRUTH)
-    { /* middle top text */
-        auto&cstring = ecos.get<com_cstring_t>(get_by_ename(ename_t{_ENAME_GUIS_MT_TEXT}));
-        memset(cstring.mdata, '\0', cstring.msize);
-        std::snprintf(
-            cstring.mdata, cstring.msize,
-            "now=%03zu.%03zu;fps=%05zu;"
-            "%c"
-            "p(x%+04iy%+04iz%+04i)s(x%+04iy%+04i)d(x%+1dy%+1d)"
-            "%c",
-            (timer.now_mil / 1000) % 1000, timer.now_mil % 1000, timer.fps_num,
-            '\n',
-            coord_v->x, coord_v->y, coord_v->z,
-            scale_v->x, scale_v->y,
-            direc_v->x, direc_v->y,
-            '\0'
-        );
+    if constexpr (_TRUTH)
+    { /* redraw */
+        ::glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        ::glClear(GL_COLOR_BUFFER_BIT);
     }
     if constexpr (_TRUTH)
-    { /* draw families from top to bottom */
+    { /* drawing */
+        /* count all visible components */
+        count_t count = 0;
+        for (auto&&
+            [entity, visual]
+            : ecos.view<
+            com_visual_t
+            >().each()
+        ) { count++; }
+        /* make a list sorted by depth and layers */
+        typedef struct drawable_t {
+            entity_t entity;
+            glayer_t glayer;
+            gpos3_t gpos3;
+            grect_t grect;
+        } drawable_t;
+        typedef struct drawlist_t {
+            drawable_t*head,*back,*tail;
+        } drawlist_t;
         drawlist_t drawlist;
-        for (auto&&[entity, visual, coord] : ecos.view<com_visual_t, com_coord_t>().each())
-        {
-            auto ent = entity;
-            if (visual.valid == _FALSE) { continue; }
-            if (auto*family = ecos.try_get<com_family_t>(entity))
-            { if (ecos.valid(family->ancestor)) { continue; } }
-            auto heritage = heritage_t{
-                .coord = coord_t{0,0,0},
-                .sizes = sizes_t{0,0},
-                .scale = scale_t{1,1},
-            };
-            if (auto*relpos = ecos.try_get<com_relpos_t>(entity))
-            {
-                heritage.coord =*coord_v;
-                heritage.sizes =*sizes_v;
-                heritage.scale =*scale_v;
+        memo::owner->new_mul(drawlist.head, count);
+        drawlist.back = drawlist.head;
+        drawlist.tail = drawlist.head + count;
+        for (auto&&
+            [entity, visual, glayer, gpos3, grect]
+            : ecos.view<
+            com_visual_t, com_glayer_t, com_gpos3_t, com_grect_t
+            >().each()
+        ) {
+            if (visual.valid && ((_FALSE
+            ) || (_TRUTH
+            && ((grect.x.l <= view.grect->x.r) && (grect.y.b <= view.grect->y.t))
+            && ((grect.x.l >= view.grect->x.l) && (grect.y.b >= view.grect->y.b))
+            ) || (_TRUTH
+            && ((grect.x.l <= view.grect->x.r) && (grect.y.t <= view.grect->y.t))
+            && ((grect.x.l >= view.grect->x.l) && (grect.y.t >= view.grect->y.b))
+            ) || (_TRUTH
+            && ((grect.x.r <= view.grect->x.r) && (grect.y.b <= view.grect->y.t))
+            && ((grect.x.r >= view.grect->x.l) && (grect.y.b >= view.grect->y.b))
+            ) || (_TRUTH
+            && ((grect.x.r <= view.grect->x.r) && (grect.y.t <= view.grect->y.t))
+            && ((grect.x.r >= view.grect->x.l) && (grect.y.t >= view.grect->y.b))
+            ) || (_TRUTH
+            && ((grect.x.l <= view.grect->x.l) && (grect.x.r >= view.grect->x.r))
+            && ((grect.y.b >= view.grect->y.b) || (grect.y.t >= view.grect->y.t))
+            ) || (_TRUTH
+            && ((grect.y.b <= view.grect->y.b) && (grect.y.t >= view.grect->y.t))
+            && ((grect.x.l >= view.grect->x.l) || (grect.x.r <= view.grect->x.r))
+            )) && ((grect.x.l != grect.x.r) || (grect.y.b != grect.y.t))) {
+                /*
+                *drawlist.back = drawable_t{
+                */
+                new ( drawlist.back ) drawable_t{
+                    .entity = entity,
+                    .glayer = glayer,
+                    .gpos3 = gpos3,
+                    .grect = grect,
+                };
+                drawlist.back++;
             }
-            drawlist.push_back({entity,visual,coord,heritage});
+        } /* fill the drawlist */
+        static constexpr auto sortfunc = [](
+            const drawable_t&sortl,
+            const drawable_t&sortr
+        ) {
+            if (sortl.gpos3.z == sortr.gpos3.z)
+            { return sortl.glayer.layer < sortr.glayer.layer; }
+            else
+            { return sortl.gpos3.z < sortr.gpos3.z; }
+        };
+        drawlist.tail = drawlist.back + 1;
+        std::sort(drawlist.head, drawlist.tail, sortfunc);
+        for (auto*drawable = drawlist.head;
+            drawable < drawlist.tail; drawable++
+        ) {
+            entity_t entity = drawable->entity;
+            grect_t grect = drawable->grect;
+            color_t color = { 0xff };
+            if (auto*tcomp = ecos.try_get<com_color_t>(entity))
+            { color =*tcomp; }
+            ::glColor3ub(color.v, color.v, color.v); 
+            if (auto*imreg = ecos.try_get<com_imreg_t>(entity);
+                auto*irect = ecos.try_get<com_irect_t>(entity)
+            ) {
+                auto imori = get_imori_from_index(imreg->index);
+                auto frect = frect_t{
+                    .x = {
+                        .l = static_cast<v1f_t>(irect->x.l)
+                            / static_cast<v1f_t>(imori->isize.x),
+                        .r = static_cast<v1f_t>(irect->x.r)
+                            / static_cast<v1f_t>(imori->isize.x),
+                    },
+                    .y = {
+                        .b = static_cast<v1f_t>(irect->y.b)
+                            / static_cast<v1f_t>(imori->isize.y),
+                        .t = static_cast<v1f_t>(irect->y.t)
+                            / static_cast<v1f_t>(imori->isize.y),
+                    },
+                };
+                ::glBindTexture(GL_TEXTURE_2D, imori->glint);
+                ::glBegin(GL_QUADS);
+                if (auto*fonts = ecos.try_get<com_fonts_t>(entity))
+                {
+                }
+                else
+                {
+                    ::glTexCoord2f(frect.x.l, frect.y.b);
+                    ::glVertex2i(grect.x.l, grect.y.b);
+                    ::glTexCoord2f(frect.x.r, frect.y.b);
+                    ::glVertex2i(grect.x.r, grect.y.b);
+                    ::glTexCoord2f(frect.x.r, frect.y.t);
+                    ::glVertex2i(grect.x.r, grect.y.t);
+                    ::glTexCoord2f(frect.x.l, frect.y.t);
+                    ::glVertex2i(grect.x.l, grect.y.t);
+                }
+                ::glEnd();
+                ::glBindTexture(GL_TEXTURE_2D, 0);
+            } /* quad */
+            ::glBegin(GL_QUADS);
+            if (auto*lgrid = ecos.try_get<com_lgrid_t>(entity))
+            { /* lgrid */
+                const auto&cells = lgrid->cells;
+                const auto&tails = lgrid->tails;
+                const auto&lsize = lgrid->lsize;
+                const auto fromy = grect.y.b - tails.y;
+                const auto intoy = grect.y.t + tails.y;
+                for (auto stepx = grect.x.l; stepx <= grect.x.r; stepx += cells.x)
+                { /* l-to-r */
+                    ::glVertex2i(stepx - lsize.x, fromy);
+                    ::glVertex2i(stepx + lsize.x, fromy);
+                    ::glVertex2i(stepx + lsize.x, intoy);
+                    ::glVertex2i(stepx - lsize.x, intoy);
+                } /* l-to-r */
+                const auto fromx = grect.x.l - tails.x;
+                const auto intox = grect.x.r + tails.x;
+                for (auto stepy = grect.y.b; stepy <= grect.y.t; stepy += cells.x)
+                { /* b-to-t */
+                    ::glVertex2i(fromx, stepy - lsize.y);
+                    ::glVertex2i(fromx, stepy + lsize.y);
+                    ::glVertex2i(intox, stepy + lsize.y);
+                    ::glVertex2i(intox, stepy - lsize.y);
+                } /* b-to-t */
+            } /* lgrid */
+            ::glEnd();
         }
-        proc_list(drawlist);
-    }
+        memo::owner->del_mul(drawlist.head, count);
+    } /* TODO: implement batch rendering, decrease draw calls */
     if constexpr (_TRUTH)
     { /* finish the frame */
-        glutPostRedisplay();
+        ::glutPostRedisplay();
     }
     if constexpr (_TRUTH)
     { /* to-hero adjustment */
-        auto ent_hero = get_by_ename({_ENAME_GAME_HERO});
-        auto anchor_h = ecos.get<com_anchor_t>(ent_hero);
-        auto coord_h = ecos.get<com_coord_t>(ent_hero);
-        auto sizes_h = ecos.get<com_sizes_t>(ent_hero);
-        auto scale_h = ecos.get<com_scale_t>(ent_hero);
         if (get_key_mode() != _KEY_MODE_VIEW)
         {
-            *coord_v = coord_h;
-            /*
-            coord_v->x -= get_anchor_coord(anchor_h.x, sizes_h.w, scale_h.x);
-            coord_v->y -= get_anchor_coord(anchor_h.y, sizes_h.h, scale_h.y);
-            */
+            ecos.replace<com_gpos3_t>(view.entity, *hero.gpos3);
         }
     }
 }
 
 /*** files ***/
 
-static void proc_image(image_t&image)
+static void proc_imori(imori_t&imori)
 {
-    image.msize = image.sizes.w * image.sizes.h * image.mstep;
+    imori.msize = imori.isize.x * imori.isize.y * imori.mstep;
     GLuint glint = 0;
-    glGenTextures(1, &glint);
-    glBindTexture(GL_TEXTURE_2D, glint);
-    glTexImage2D(
+    ::glGenTextures(1, &glint);
+    ::glBindTexture(GL_TEXTURE_2D, glint);
+    ::glTexImage2D(
         GL_TEXTURE_2D, 0,
-        image.mstep, image.sizes.w, image.sizes.h, 0,
-        image.mstep == 4 ? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE,
-        image.mdata
+        imori.mstep, imori.isize.x, imori.isize.y, 0,
+        imori.mstep == 4 ? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE,
+        imori.mdata
     );
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    image.glint = glint;
+    ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    ::glBindTexture(GL_TEXTURE_2D, 0);
+    imori.glint = glint;
 }
 
-void load_image_from_fpath_into_value(const std::string&fpath, image_t&image)
+void load_imori_from_fpath_into_value(const std::string&fpath, imori_t&imori)
 {
-    image.mdata = stbi_load(&fpath[0], &image.sizes.w, &image.sizes.h, &image.mstep, 0);
-    if (image.mdata) { proc_image(image); }
-    else { std::cerr << "failed image loading: " << fpath << std::endl; }
+    imori.mdata = stbi_load(&fpath[0], &imori.isize.x, &imori.isize.y, &imori.mstep, 0);
+    if (imori.mdata) { proc_imori(imori); }
+    else { std::cerr << "failed imori loading: " << fpath << std::endl; }
 }
 
-void load_image_from_fpath_into_index(const std::string&fpath, index_t index)
+void load_imori_from_fpath_into_index(const std::string&fpath, index_t index)
 {
-    if (index < _IMAGE_COUNT)
+    if (index < _IMORI_COUNT)
     {
-        load_image_from_fpath_into_value(fpath, image_list[index]);
+        load_imori_from_fpath_into_value(fpath, imori_list[index]);
     }
     else
     {
     }
 }
 
-void load_image_from_value_into_index(const image_t&image, index_t index)
+void load_imori_from_value_into_index(const imori_t&imori, index_t index)
 {
-    if (index < _IMAGE_COUNT)
+    if (index < _IMORI_COUNT)
     {
-        image_list[index] = image;
-        proc_image(image_list[index]);
+        imori_list[index] = imori;
+        proc_imori(imori_list[index]);
     }
     else
     {
@@ -1000,58 +860,18 @@ void load_image_from_value_into_index(const image_t&image, index_t index)
 
 /*** view ***/
 
-void view_goto(const coord_t&coord)
-{
-    coord_v->x = (coord.x + TILE_COUNT_X/2) % TILE_COUNT_X;
-    coord_v->y = (coord.y + TILE_COUNT_Y/2) % TILE_COUNT_Y;
-    coord_v->z = (coord.z + TILE_COUNT_Z/2) % TILE_COUNT_Z;
-}
-void view_goto_x(v1s_t gotox)
-{
-    coord_v->x = (gotox + TILE_COUNT_X/2) % TILE_COUNT_X;
-}
-void view_goto_y(v1s_t gotoy)
-{
-    coord_v->y = (gotoy + TILE_COUNT_Y/2) % TILE_COUNT_Y;
-}
-void view_goto_z(v1s_t gotoz)
-{
-    coord_v->z = (gotoz + TILE_COUNT_Z/2) % TILE_COUNT_Z;
-}
-
-void view_move(const coord_t&coord) {
-    view_goto({
-        .x = coord.x * (TILE_SCALE_X * scale_v->x),
-        .y = coord.y * (TILE_SCALE_Y * scale_v->y),
-        .z = coord.z,
-    });
-}
-
-void view_zoom(const scale_t&scale)
-{
-    if (scale.x < 0)
-    {
-        scale_v->x >>= (-scale.x);
-    }
-    else
-    {
-        scale_v->x <<= (+scale.x);
-    }
-    scale_v->x = std::clamp(scale_v->x, 1, 2 << 16);
-    if (scale.y < 0)
-    {
-        scale_v->y >>= (-scale.y);
-    }
-    else
-    {
-        scale_v->y <<= (+scale.y);
-    }
-    scale_v->y = std::clamp(scale_v->y, 1, 2 << 16);
-}
-
 void view_turn(const bool_t lside)
 {
-    *direc_v = get_vec_turn(*direc_v, lside);
+    view.direc =&ecos.replace<com_direc_t>(
+        view.entity,
+        get_vec_turn(*view.direc, lside)
+    );
+    ecos.patch<com_direc_t>(view.entity);
 }
+
+/** getters **/
+
+imori_t*get_imori_from_index(index_t index)
+{ return&imori_list[index % _IMORI_COUNT]; }
 
 _NAMESPACE_LEAVE

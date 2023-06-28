@@ -1,3 +1,5 @@
+#include "head.hxx"
+
 /* headers */
 
 #include "ecos.hxx"
@@ -12,25 +14,14 @@ _NAMESPACE_ENTER
 
 ecos_t ecos;
 
-using ename_table_t = std::array<ent_t, _ENAME_COUNT>;
-ename_table_t ename_table;
 /** actions **/
 
 void ecos_init()
 {
-    for (auto&ent:ename_table) { ent = entt::null; }
-    ecos.on_construct<com_ename_t>().connect<[](ecos_t&ecos, entt::entity ent)
-    {
-        auto&ename = ecos.get<com_ename_t>(ent);
-        ename_table[ename.e] = ent;
-    }>();
-    ecos.on_destroy<com_ename_t>().connect<[](ecos_t&ecos, entt::entity ent)
-    {
-        auto&ename = ecos.get<com_ename_t>(ent);
-        ename_table[ename.e] = entt::null;
-    }>();
-    ecos.on_construct<com_family_t>().connect<[](ecos_t&ecos, entt::entity ent)
-    {
+    /* signals */
+    entt::sigh_helper{ecos}
+    .with<com_family_t>().on_update<[](ecos_t&ecos, ent_t ent){
+    }>().on_construct<[](ecos_t&ecos, ent_t ent){
         auto*family_e =&ecos.get<com_family_t>(ent);
         auto ancestor = family_e->ancestor;
         family_e->ancestor = entt::null;
@@ -38,45 +29,20 @@ void ecos_init()
         auto follower = family_e->follower;
         family_e->follower = entt::null;
         set_follower(ent, follower);
-    }>();
-    ecos.on_destroy<com_family_t>().connect<[](ecos_t&ecos, entt::entity ent)
-    {
+    }>().on_destroy<[](ecos_t&ecos, ent_t ent){
         auto*family_e =&ecos.get<com_family_t>(ent);
         set_ancestor(ent);
         set_follower(ent);
     }>();
-    ecos.on_construct<com_cstring_t>().connect<[](ecos_t&ecos, ent_t ent)
-    {
-        auto&cstring = ecos.get<com_cstring_t>(ent);
-        cstring.msize = std::min(cstring.msize, CSTRING_MSIZE);
-        memset(cstring.mdata, '\0', cstring.msize);
-    }>();
-    ecos.on_destroy<com_cstring_t>().connect<[](ecos_t&ecos, ent_t ent)
-    {
-        auto&cstring = ecos.get<com_cstring_t>(ent);
-        memset(cstring.mdata, '\0', cstring.msize);
-    }>();
-    auto null = ecos.create();
+    /* others can start from 1 */
+    auto ent0 = ecos.create();
+}
+void ecos_quit()
+{
+    ecos.clear();
 }
 
-/*** getters ***/
-
-ent_t get_by_ename(const ename_t&ename)
-{
-    return ename_table[ename.e];
-}
-ent_t get_by_iname(const iname_t&iname)
-{
-    for (auto&&[ent,iname_e] : ecos.view<com_iname_t>().each())
-    { if (iname_e.i == iname.i) { return ent; } }
-    return entt::null;
-}
-ent_t get_by_sname(const sname_t&sname)
-{
-    for (auto&&[ent,sname] : ecos.view<com_sname_t>().each())
-    { if (std::strcmp(sname.s, sname.s) == 0) { return ent; } }
-    return entt::null;
-}
+/** getters **/
 
 ent_t get_ancestor(ent_t ent)
 {
@@ -106,7 +72,7 @@ ent_t get_siblingr(ent_t ent)
     return family_e.siblingr;
 }
 
-/*** vetters ***/
+/** vetters **/
 
 bool vet_ancestor(ent_t ent, ent_t ancestor)
 {
@@ -200,7 +166,7 @@ bool vet_inherits(ent_t ent, ent_t inherits)
     return _FALSE;
 }
 
-/*** setters ***/
+/** setters **/
 
 bool set_ancestor(ent_t ent, ent_t ancestor)
 {
@@ -262,20 +228,26 @@ bool set_follower(ent_t ent, ent_t follower)
         auto follower = family_e->follower;
         auto*family_f =&ecos.get<com_family_t>(follower);
         family_f->ancestor = entt::null;
-        auto siblingl = family_f->siblingl;
+        auto siblingl = follower;
         auto*family_l =&ecos.get<com_family_t>(siblingl);
         while (ecos.valid(family_l->siblingl))
         {
+            siblingl = family_l->siblingl;
+            family_l = ecos.try_get<com_family_t>(siblingl);
             family_l->siblingr = entt::null;
             family_l->ancestor = entt::null;
         }
-        auto siblingr = family_f->siblingr;
+        family_f->siblingl = entt::null;
+        auto siblingr = follower;
         auto*family_r =&ecos.get<com_family_t>(siblingr);
         while (ecos.valid(family_r->siblingr))
         {
+            siblingr = family_r->siblingr;
+            family_r = ecos.try_get<com_family_t>(siblingr);
             family_r->siblingl = entt::null;
             family_r->ancestor = entt::null;
         }
+        family_f->siblingr = entt::null;
     }
     family_e->follower = follower;
     if (ecos.valid(follower))

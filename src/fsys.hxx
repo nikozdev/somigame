@@ -2,11 +2,6 @@
 
 #include "head.hxx"
 
-#include <experimental/bits/fs_fwd.h>
-#include <experimental/bits/fs_path.h>
-#include <experimental/bits/fs_dir.h>
-#include <experimental/bits/fs_ops.h>
-
 /* defines */
 
 #define _NAMESPACE_ENTER_FSYS namespace fsys {

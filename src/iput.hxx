@@ -38,8 +38,10 @@ typedef struct key_bind_t {
 
 /** datadef **/
 
-using key_mode_set_signal_t = t_signal_t<key_mode_e>;
-extern key_mode_set_signal_t key_mode_set_signal;
+_SIGNALDEC(key_mode_set, void(key_mode_e))
+_SIGNALDEC(key_line_apply, void(key_path_t))
+_SIGNALDEC(key_line_insert, void(key_path_t))
+_SIGNALDEC(key_down, void(char))
 
 /** consdef **/
 

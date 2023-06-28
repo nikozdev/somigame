@@ -1,3 +1,5 @@
+#include "head.hxx"
+
 /* headers */
 
 #include "iput.hxx"
@@ -5,8 +7,9 @@
 #include "gfix.hxx"
 #include "ecos.hxx"
 #include "game.hxx"
+#include "main.hxx"
 
-#include <GL/glut.h>
+/* defines */
 
 /* content */
 
@@ -14,7 +17,10 @@ _NAMESPACE_ENTER
 
 /** datadef **/
 
-key_mode_set_signal_t key_mode_set_signal;
+_SIGNALDEF(key_mode_set)
+_SIGNALDEF(key_line_apply)
+_SIGNALDEF(key_line_insert)
+_SIGNALDEF(key_down)
 
 std::string key_line = "";
 int key_narg_sign = +1;
@@ -49,7 +55,7 @@ bool key_mode_set(key_mode_e mode)
     {
         key_mode = mode;
         key_list =&key_list_table[mode];
-        key_mode_set_signal.call(mode);
+        key_mode_set_sigholder.publish(mode);
         return _TRUTH;
     }
     else { return _FALSE; }
@@ -76,7 +82,7 @@ bool key_bind_set(key_mode_e mode, key_path_t path, key_func_t func)
             }
             else
             {
-                memo::owner->new_one<key_bind_t>(bind );
+                memo::owner->new_one<key_bind_t>(bind);
                 (*list)[code] = bind;
             }
             list =&bind->list;
@@ -108,6 +114,7 @@ static void key_line_apply()
         }
         else
         {
+            key_line_apply_sigholder.publish(&key_line[0]);
             key_bind_used->func(key_narg * key_narg_sign);
             key_line += "[done]";
         }
@@ -133,6 +140,7 @@ static void key_line_insert(key_code_t code)
         bind =(*key_list)[code];
     }
     key_line += code;
+    key_line_insert_sigholder.publish(&key_line[0]);
     if (bind)
     {
         key_bind_used = bind;
@@ -151,11 +159,18 @@ static void key_line_insert(key_code_t code)
     }
 }
 
-extern void proc_key_board(unsigned char key, int _mouse_x, int _mouse_y);
 void iput_init()
 {
-    glutSetKeyRepeat(GLUT_KEY_REPEAT_ON);
-    glutKeyboardFunc(proc_key_board);
+    ::glutSetKeyRepeat(GLUT_KEY_REPEAT_ON);
+    ::glutKeyboardFunc([](unsigned char key, int _mx, int _my) {
+        key_down_sigholder.publish(key);
+        if (std::isdigit(key))
+        { key_narg = key_narg * 10 + (key - '0'); }
+        else if (key == '-')
+        { key_narg_sign *= -1; }
+        else
+        { key_line_insert(key); }
+    });
     /* keybinds */
     for (index_t iter = _KEY_MODE_MAIN; iter < _KEY_MODE_COUNT; iter++)
     {
@@ -171,79 +186,39 @@ void iput_init()
         /*** view mode ***/
         key_bind_set(mode, "mv", [](int narg){ key_mode_set(_KEY_MODE_VIEW); });
         /*** quit ***/
-        key_bind_set(mode, "mq", [](int narg){ exit(_ERROR_NONE); });
+        key_bind_set(mode, "mq", [](int narg){ main_quit(); });
     }
     key_mode_set(_KEY_MODE_MAIN);
     if constexpr (_TRUTH)
     { /* keybinds */
         if constexpr (_TRUTH)
         { /** view **/
-            /*** goto ***/
-            key_bind_set(_KEY_MODE_VIEW, "gx", [](int narg){ view_goto_x(narg); });
-            key_bind_set(_KEY_MODE_VIEW, "gy", [](int narg){ view_goto_y(narg); });
-            key_bind_set(_KEY_MODE_VIEW, "gz", [](int narg){ view_goto_z(narg); });
-            /*** move ***/
-            key_bind_set(_KEY_MODE_VIEW, "a", [](int narg){ view_move({.x=(-1)*(get_num_sign(narg)+narg),.y=0}); });
-            key_bind_set(_KEY_MODE_VIEW, "d", [](int narg){ view_move({.x=(+1)*(get_num_sign(narg)+narg),.y=0}); });
-            key_bind_set(_KEY_MODE_VIEW, "s", [](int narg){ view_move({.x=0,.y=(-1)*(get_num_sign(narg)+narg)}); });
-            key_bind_set(_KEY_MODE_VIEW, "w", [](int narg){ view_move({.x=0,.y=(+1)*(get_num_sign(narg)+narg)}); });
-            key_bind_set(_KEY_MODE_VIEW, "e", [](int narg){ view_turn(_FALSE); });
-            key_bind_set(_KEY_MODE_VIEW, "q", [](int narg){ view_turn(_TRUTH); });
+            key_bind_set(_KEY_MODE_VIEW, "e", [](int narg){
+                view_turn(_FALSE);
+            });
+            key_bind_set(_KEY_MODE_VIEW, "q", [](int narg){
+                view_turn(_TRUTH);
+            });
             /*** zoom ***/
-            key_bind_set(_KEY_MODE_VIEW, "z", [](int narg){ view_zoom({.x=narg,.y=narg}); });
+            key_bind_set(_KEY_MODE_VIEW, "z", [](int narg){
+            });
         }
         if constexpr (_TRUTH)
         { /** hero **/
-            /*** step ***/
-            key_bind_set(_KEY_MODE_HERO, "a", [](int narg){ hero_step_x(-1*(get_num_sign(narg)+narg)); });
-            key_bind_set(_KEY_MODE_HERO, "d", [](int narg){ hero_step_x(+1*(get_num_sign(narg)+narg)); });
-            key_bind_set(_KEY_MODE_HERO, "s", [](int narg){ hero_step_y(-1*(get_num_sign(narg)+narg)); });
-            key_bind_set(_KEY_MODE_HERO, "w", [](int narg){ hero_step_y(+1*(get_num_sign(narg)+narg)); });
+            key_bind_set(_KEY_MODE_HERO, "a", [](int narg){});
+            key_bind_set(_KEY_MODE_HERO, "d", [](int narg){});
+            key_bind_set(_KEY_MODE_HERO, "s", [](int narg){});
+            key_bind_set(_KEY_MODE_HERO, "w", [](int narg){});
         } /* pick */
         if constexpr (_TRUTH)
         { /** pick **/
-            /*** step ***/
-            key_bind_set(_KEY_MODE_PICK, "a", [](int narg){ pick_step_x(-1*(get_num_sign(narg)+narg)); });
-            key_bind_set(_KEY_MODE_PICK, "d", [](int narg){ pick_step_x(+1*(get_num_sign(narg)+narg)); });
-            key_bind_set(_KEY_MODE_PICK, "s", [](int narg){ pick_step_y(-1*(get_num_sign(narg)+narg)); });
-            key_bind_set(_KEY_MODE_PICK, "w", [](int narg){ pick_step_y(+1*(get_num_sign(narg)+narg)); });
-            key_bind_set(_KEY_MODE_PICK, "g", [](int narg){
-                auto&coord_p = ecos.get<com_coord_t>(get_by_ename({_ENAME_GAME_PICK}));
-                auto&coord_h = ecos.get<com_coord_t>(get_by_ename({_ENAME_GAME_HERO}));
-                if constexpr (_FALSE)
-                {
-                    auto stepx = coord_p.x / UNIT_SCALE_X;
-                    auto stepy = coord_p.y / UNIT_SCALE_Y;
-                    hero_step_x(stepx); hero_step_y(stepy);
-                }
-                else
-                {
-                    auto gotox = coord_h.x + coord_p.x;
-                    auto gotoy = coord_h.y + coord_p.y;
-                    hero_goto_x(gotox); hero_goto_y(gotoy);
-                }
-                coord_p.x = 0;
-                coord_p.y = 0;
-                coord_p.z = 0;
-            });
+            key_bind_set(_KEY_MODE_PICK, "a", [](int narg){});
+            key_bind_set(_KEY_MODE_PICK, "d", [](int narg){});
+            key_bind_set(_KEY_MODE_PICK, "s", [](int narg){});
+            key_bind_set(_KEY_MODE_PICK, "w", [](int narg){});
+            key_bind_set(_KEY_MODE_PICK, "g", [](int narg){});
         } /* pick */
     } /* keybinds */
-}
-
-void proc_key_board(unsigned char key, int _mouse_x, int _mouse_y)
-{
-    if (std::isdigit(key))
-    {
-        key_narg = key_narg * 10 + (key - '0');
-    }
-    else if (key == '-')
-    {
-        key_narg_sign *= -1;
-    }
-    else
-    {
-        key_line_insert(key);
-    }
 }
 
 _NAMESPACE_LEAVE

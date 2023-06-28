@@ -5,6 +5,9 @@
 #include "head.hxx"
 #include "util.hxx"
 #include "gfix.hxx"
+#include "game.hxx"
+
+#include "../lib/entt/src/entity/registry.hpp"
 
 /* defines */
 
@@ -12,15 +15,122 @@
 
 _NAMESPACE_ENTER
 
-/** typedef **/
-
-/*** entity ***/
+/** forward **/
 
 typedef entt::registry ecos_t;
 typedef entt::entity ent_t;
 typedef ent_t entity_t;
 
-/*** component ***/
+/** datadef**/
+
+extern ecos_t ecos;
+
+/** typedef **/
+
+/*** classes ***/
+
+class animator_t
+{
+public: /* typedef */
+    using this_t = animator_t;
+    using len_t = msize_t;
+    class a_step_t
+    {
+    public: /* typedef */
+        using this_t = a_step_t;
+    public: /* codetor */
+        a_step_t(len_t since, len_t until) :
+            since(since), until(until) {}
+        virtual ~a_step_t() = default;
+    public: /* actions */
+        virtual bool play(len_t pas) = 0;
+    public: /* datadef */
+        const len_t since;
+        const len_t until;
+    }; /* a_step_t */
+    template<typename t_com_t, typename t_mem_t, typename...t_paf_t>
+    class t_step_t : public a_step_t
+    {
+    public: /* typedef */
+        using this_t = t_step_t<t_com_t, t_mem_t, t_paf_t...>;
+        using com_t = t_com_t;
+        using mem_t = t_mem_t;
+    public: /* codetor */
+        t_step_t(len_t since, len_t until, t_mem_t tar, ent_t ent, t_paf_t&&...paf) :
+            a_step_t(since, until),
+            ent(ent), paf{paf...},
+            was(get_member(
+                ecos.get<t_com_t>(ent),
+                std::forward<t_paf_t>(paf)...
+            )), tar(tar)
+        { }
+    public: /* actions */
+        virtual bool play(len_t pas) override
+        {
+            if (!ecos.valid(this->ent)) { return _FALSE; }
+            if (auto*com = ecos.try_get<t_com_t>(this->ent))
+            {
+                if (pas >= since && pas <= until)
+                {
+                    auto&mem = get_member(*com, this->paf);
+                    mem = was + ((tar-was) * (pas-since) / (until-since));
+                    return _TRUTH;
+                }
+                else { return _FALSE; }
+                return _TRUTH;
+            }
+            else
+            { return _FALSE; }
+        }
+    private: /* datadef */
+        ent_t ent;
+        const std::tuple<t_paf_t...> paf;
+    public: /* datadef */
+        const mem_t was;
+        const mem_t tar;
+    }; /* t_step_t */
+public: /* codetor */
+    animator_t(ent_t ent) :
+        ent(ent), start{ timer.now_mil }, step_array{}
+    { }
+public: /* actions */
+    template<typename t_com_t, typename t_tar_t, typename...t_paf_t>
+    bool_t insert(len_t since, len_t until, t_tar_t tar, t_paf_t&&...paf)
+    {
+        auto*step = new t_step_t<t_com_t, t_tar_t, t_paf_t...>(
+            since, until, tar, this->ent, std::forward<t_paf_t>(paf)...
+        );
+        step_array.push_back(step);
+        return _TRUTH;
+    }
+    void proc()
+    {
+        auto done = 0;
+        for (auto*step : this->step_array)
+        {
+            auto diff = timer.now_mil - this->start;
+            done += diff > step->until;
+            step->play(diff);
+        }
+        if (done)
+        {
+            timer.dispatcher.sink<update_event_t>().disconnect<&this_t::proc>(*this);
+            this->start = timer.now_mil;
+        }
+    }
+    bool_t play()
+    {
+        this->start = timer.now_mil;
+        timer.dispatcher.sink<update_event_t>().connect<&this_t::proc>(*this);
+        return _TRUTH;
+    }
+public: /* datadef */
+    ent_t ent;
+    len_t start;
+    t_array_t<a_step_t*>step_array;
+}; /* animator_t */
+
+/*** structs ***/
 
 typedef struct family_t {
     ent_t ancestor = entt::null;
@@ -29,37 +139,75 @@ typedef struct family_t {
     ent_t siblingr = entt::null;
 } family_t, com_family_t;
 
+using com_strbuf_t = strbuf_t;
+
+using com_clock_t = clock_t;
+
+/**** names ****/
+
 using com_iname_t = iname_t;
 using com_sname_t = sname_t;
 using com_ename_t = ename_t;
 
-using com_cstring_t = cstring_t;
+/**** sizes ****/
 
-using com_coord_t = coord_t;
+using com_asize_t = asize_t;
+using com_rsize_t = rsize_t;
+using com_gsize_t = gsize_t;
+using com_tsize_t = tsize_t;
+using com_isize_t = isize_t;
+
+using com_ratio_t = ratio_t;
+
+/**** coord ****/
+
+using com_apos2_t = apos2_t;
+using com_rpos2_t = rpos2_t;
+using com_zpos1_t = zpos1_t;
+using com_gpos3_t = gpos3_t;
+using com_tpos3_t = tpos3_t;
+using com_ipos2_t = ipos2_t;
+
+using com_pivot_t = pivot_t;
+
+/**** geometry ****/
+
 using com_direc_t = direc_t;
 
-using com_sizes_t = sizes_t;
-using com_scale_t = scale_t;
-using com_ratio_t = ratio_t;
-using com_recta_t = recta_t;
+using com_grect_t = grect_t;
+using com_trect_t = trect_t;
+using com_irect_t = irect_t;
 
-using com_relpos_t = relpos_t;
-using com_anchor_t = anchor_t;
+/**** visual ****/
 
-using com_visual_t = visual_t;
+using com_visual_t= visual_t;
+
+using com_rlayer_t= rlayer_t;
+using com_glayer_t= glayer_t;
+
 using com_color_t = color_t;
-using com_image_t = image_region_t;
+using com_imreg_t = imreg_t;
 using com_faces_t = faces_t;
 using com_fonts_t = fonts_t;
-using com_grid_t = grid_t;
 
-/** datadef**/
+using com_lgrid_t = lgrid_t;
 
-extern ecos_t ecos;
+/**** logic ****/
+
+using com_actor_t = actor_t;
+using com_alive_t = alive_t;
+using com_mover_t = mover_t;
+
+/**** tilegrid ****/
+
+using com_tcell_t = tcell_t;
+using com_floor_t = floor_t;
+using com_block_t = block_t;
 
 /** actions **/
 
 extern void ecos_init();
+extern void ecos_quit();
 
 template<typename func_t, typename...args_t>
 void call_for_ancestor(ent_t ent, func_t func, args_t&&...args)
@@ -194,10 +342,6 @@ void call_for_siblings(ent_t ent, func_t func, args_t&&...args)
 }
 
 /*** getters ***/
-
-extern ent_t get_by_iname(const iname_t&value);
-extern ent_t get_by_ename(const ename_t&value);
-extern ent_t get_by_sname(const sname_t&value);
 
 extern ent_t get_ancestor(ent_t ent);
 extern ent_t get_follower(ent_t ent);

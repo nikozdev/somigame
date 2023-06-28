@@ -11,135 +11,151 @@ _NAMESPACE_ENTER
 
 /** consdef **/
 
-constexpr auto RATIO_X = 16;
-constexpr auto RATIO_Y = 9;
+constexpr auto VIEW_RATIO_X = 16;
+constexpr auto VIEW_RATIO_Y = 9;
 
-constexpr auto VIEW_SIZES_W = UNIT_SCALE_X * RATIO_X;
-constexpr auto VIEW_SIZES_H = UNIT_SCALE_Y * RATIO_Y;
+constexpr auto VIEW_ASIZE_X = UNIT_ASIZE_X * VIEW_RATIO_X;
+constexpr auto VIEW_ASIZE_Y = UNIT_ASIZE_Y * VIEW_RATIO_Y;
 
-constexpr auto GUIS_SIZES_X = UNIT_SCALE_X*2;
-constexpr auto GUIS_SIZES_Y = UNIT_SCALE_X;
+constexpr auto GUIS_ASIZE_X = UNIT_ASIZE_X * 2;
+constexpr auto GUIS_ASIZE_Y = UNIT_ASIZE_Y;
+constexpr auto GUIS_RSIZE_X = RSIZE_MAX / VIEW_RATIO_X;
+constexpr auto GUIS_RSIZE_Y = RSIZE_MAX / VIEW_RATIO_Y;
 constexpr auto GUIS_LAYER = 0xff;
 
 /** enumdef **/
 
-/*** entity face ***/
 typedef enum eface_e : index_t {
     _EFACE_F = 0x0,
     _EFACE_L,
     _EFACE_B,
     _EFACE_R,
     _EFACE_COUNT,
-} eface_e;
+} eface_e; /*** entity face ***/
 
-typedef enum image_e : index_t {
-    _IMAGE_META_NONE = 0x0,
-    _IMAGE_META_TEST = 0x1,
-    _IMAGE_META_LOGO,
-    _IMAGE_GAME_PICK,
-    _IMAGE_GAME_HERO,
-    _IMAGE_TILE_TEST,
-    _IMAGE_FONT_TEST,
-    _IMAGE_FONT_MAIN,
-    _IMAGE_COUNT,
-} image_e;
+typedef enum imori_e : index_t {
+    _IMORI_META_NONE = 0x0,
+    _IMORI_META_TEST = 0x1,
+    _IMORI_META_LOGO,
+    _IMORI_GAME_PICK,
+    _IMORI_GAME_HERO,
+    _IMORI_TILE_TEST,
+    _IMORI_FONT_TEST,
+    _IMORI_FONT_MAIN,
+    _IMORI_COUNT,
+} imori_e; /* image origins */
+
+/** forward **/
+
+typedef struct family_t family_t;
 
 /** typedef **/
 
 typedef struct color_t {
-    unsigned char v = 0u;
-} color_t, color_t;
+    ubyte_t v = 0u;
+} color_t;
 
-typedef struct image_origin_t {
+typedef struct imori_t {
     index_t glint = 0;
-    sizes_t sizes = { .w = 0, .h = 0 };
-    int mstep = 0;
-    size_t msize = 0;
+    isize_t isize = { 0, 0 };
+    index_t mstep = 0;
+    msize_t msize = 0;
     udata_t mdata = _NULL;
-} image_t, image_origin_t;
+} imori_t;
 
-typedef struct image_region_t {
-    index_t index = _IMAGE_META_TEST;
-    pos2d_t coord = { 0, 0 };
-    sizes_t sizes = { 0, 0 };
-} image_region_t;
+typedef struct imreg_t {
+    index_t index = _IMORI_META_TEST;
+    pivot_t pivot = { PIVOT_MIN, PIVOT_MIN };
+    apos2_t apos2 = { 0, 0 };
+    rpos2_t rpos2 = { RPOS2_MIN, RPOS2_MIN };
+    asize_t asize = { 0, 0 };
+    rsize_t rsize = { RSIZE_MAX, RSIZE_MAX };
+} imreg_t;
 
 typedef struct faces_t {
-    image_region_t ilist[_EFACE_COUNT];
-} faces_t, faces_t;
+    imreg_t ilist[_EFACE_COUNT];
+} faces_t;
 
-typedef struct image_holder_t {
-    image_region_t faces[_EFACE_COUNT] = {
-        [_EFACE_F] = {
-            .index = _IMAGE_META_NONE,
-            .coord = pos2d_t { .x = 0, .y = 0 },
-            .sizes = sizes_t { .w = 0, .h = 0 },
-        },
-        [_EFACE_L] = {
-            .index = _IMAGE_META_NONE,
-            .coord = pos2d_t { .x = 0, .y = 0 },
-            .sizes = sizes_t { .w = 0, .h = 0 },
-        },
-        [_EFACE_B] = {
-            .index = _IMAGE_META_NONE,
-            .coord = pos2d_t { .x = 0, .y = 0 },
-            .sizes = sizes_t { .w = 0, .h = 0 },
-        },
-        [_EFACE_R] = {
-            .index = _IMAGE_META_NONE,
-            .coord = pos2d_t { .x = 0, .y = 0 },
-            .sizes = sizes_t { .w = 0, .h = 0 },
-        },
-    };
-} image_holder_t;
-
-typedef struct visual_t {
-    bool_t valid = _TRUTH;
+typedef struct rlayer_t {
     index_t layer = 0;
-} visual_t, visual_t;
+} rlayer_t; /* relative layer */
+typedef struct glayer_t {
+    index_t layer = 0;
+} glayer_t; /* global layer */
+typedef struct visual_t {
+    v1bit_t valid = _TRUTH;
+} visual_t; /* any visible entity */
 
 typedef struct ratio_t {
-    v1s_t x = RATIO_X, y = RATIO_Y;
-} ratio_t;
+    v1s08_t x = VIEW_RATIO_X, y = VIEW_RATIO_Y;
+} ratio_t; /* limit of x-y sizes relative to each other */
 
 typedef struct fonts_t {
-    color_t color = {0xff};
-    image_region_t image = {
-        .index = _IMAGE_FONT_MAIN,
-        .coord = {0,0},
-        .sizes = {0x80,0x30},
-    };
     cchar_t first = ' '; /* the first character in the image */
-    struct {
-        sizes_t sizes = {8,8}; /* glyph size */
-        pos2d_t steps = {0,0}; /* offsets from glyph to glyph */
+    struct glyph_t {
+        /* offsets from glyph to glyph */
+        apos2_t apos2 = { 0, 0 };
+        rpos2_t rpos2 = { RPOS2_MID, RPOS2_MID };
+        /* glyph size */
+        asize_t asize = { 8, 8 };
+        rsize_t rsize = { RSIZE_MIN, RSIZE_MIN };
     } glyph; /* settings for every character */
-} fonts_t;
+} fonts_t; /* font settings */
 
-typedef struct grid_t {
-    sizes_t cells{UNIT_SCALE_X,UNIT_SCALE_Y}; /* sizes of cells */
-    sizes_t tails{0,0}; /* trailing lines from both sides */
-    v1s_t width = 1;
-} grid_t;
+typedef struct lgrid_t {
+    asize_t cells{
+        .x = UNIT_ASIZE_X,
+        .y = UNIT_ASIZE_Y,
+    }; /* sizes of cells */
+    asize_t tails{
+        .x = 0,
+        .y = 0
+    }; /* trailing lines from both sides */
+    asize_t lsize = {
+        .x = 1,
+        .y = 1,
+    }; /* lines sizes in both axes */
+} lgrid_t; /* line grid */
 
-/** getters **/
+/** datadef **/
 
-inline auto get_anchor_coord(
-    const auto anchor_x = RELPOS_MID,
-    const auto sizes_w = 0,
-    const auto scale_x = 1
-) { return (sizes_w * scale_x * anchor_x) / RELPOS_DIV; }
-inline auto get_anchor_coord(
-    const anchor_t&anchor = { RELPOS_MID, RELPOS_MID },
-    const sizes_t&sizes = {0,0},
-    const scale_t&scale = {1,1}
-) {
-    return coord_t{
-        get_anchor_coord(anchor.x, sizes.w, scale.x),
-        get_anchor_coord(anchor.y, sizes.h, scale.y),
-        0
-    };
-}
+struct view_t {
+    entity_t entity;
+    /* sizes */
+    asize_t *asize;
+    gsize_t *gsize;
+    tsize_t *tsize;
+    ratio_t *ratio;
+    /* coord */
+    apos2_t *apos2;
+    zpos1_t *zpos1;
+    gpos3_t *gpos3;
+    tpos3_t *tpos3;
+    /* geometry */
+    direc_t *direc;
+    grect_t *grect;
+    trect_t *trect;
+    /* visual */
+    visual_t*visual;
+    /* family */
+    family_t*family;
+} extern view; /* the camera, point of view */
+
+struct helpgrid_t {
+    entity_t entity;
+    /* sizes */
+    asize_t *asize;
+    gsize_t *gsize;
+    tsize_t *tsize;
+    /* coord */
+    gpos3_t *gpos3;
+    tpos3_t *tpos3;
+    /* visual */
+    visual_t*visual;
+    lgrid_t *lgrid;
+    /* family */
+    family_t*family;
+} extern helpgrid; /* the grid around the player */
 
 /** actions **/
 
@@ -147,16 +163,14 @@ extern void gfix_init();
 
 extern void gfix_loop();
 
-extern void load_image_from_fpath_into_value(const std::string&fpath, image_t&image);
-extern void load_image_from_fpath_into_index(const std::string&fpath, index_t index);
-extern void load_image_from_value_into_index(const image_t&image, index_t index);
+extern void load_imori_from_fpath_into_value(const std::string&fpath, imori_t&imori);
+extern void load_imori_from_fpath_into_index(const std::string&fpath, index_t index);
+extern void load_imori_from_value_into_index(const imori_t&imori_t, index_t index);
 
-extern void view_move(const pos3d_t&coord = {0,0,0});
-extern void view_goto(const pos3d_t&coord = {0,0,0});
-extern void view_goto_x(v1s_t gotox);
-extern void view_goto_y(v1s_t gotoy);
-extern void view_goto_z(v1s_t gotoz);
-extern void view_zoom(const scale_t&scale);
 extern void view_turn(const bool_t lside = _TRUTH);
+
+/** getters **/
+
+extern imori_t*get_imori_from_index(index_t index);
 
 _NAMESPACE_LEAVE

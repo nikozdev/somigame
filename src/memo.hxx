@@ -22,7 +22,7 @@
  * > m+a-1, or a-1 in the 1st case
  * > > done to prevent excessful addition for already aligned numbers
 */
-#define _ALIGN(m,a) (((msize_t)(m)+((msize_t)(a)-1))&~((msize_t)(a)-1))
+#define _ALIGN(m,a) (((size_t)(m)+((size_t)(a)-1))&~((size_t)(a)-1))
 
 /* content */
 
@@ -33,7 +33,7 @@ _NAMESPACE_ENTER_MEMO
 /** consdef **/
 
 constexpr msize_t OWNER_MSIZE = 1 << 20; /* 1mb */
-constexpr msize_t MPAGE_CSIZE = 1 << 10; /* 1kb */
+constexpr msize_t PAGER_PSIZE = 1 << 10; /* 1kb */
 
 /** typedef **/
 
@@ -80,34 +80,35 @@ public: /* actions */
     template<typename t_vdata_t, typename...t_vargs_t> constexpr
     v1bit_t new_one(t_vdata_t*&vdata, t_vargs_t&&...vargs)
     {
-        _EFNOT(this->give<t_vdata_t>(vdata, 1), "mem-give error!", return _FALSE);
+        this->give<t_vdata_t>(vdata, 1);
 		new(vdata)t_vdata_t(std::forward<t_vargs_t>(vargs)...);
 		return _TRUTH;
 	}
-    template<typename t_vdata_t, typename ... t_vargs_t>
+    template<typename t_vdata_t, typename ... t_vargs_t> constexpr
     v1bit_t new_mul(t_vdata_t*&vdata, count_t count, t_vargs_t&&...vargs)
     {
-		_EFNOT(this->give<t_vdata_t>(vdata, count), "mem-give error!", return _FALSE);
+        this->give<t_vdata_t>(vdata, count);
         for (t_vdata_t*iter = vdata,*tail = iter + count; iter < tail; iter++)
         { new(iter)t_vdata_t(std::forward<t_vargs_t>(vargs)...); }
 		return _TRUTH;
 	}
-    template<typename t_vdata_t>
+    template<typename t_vdata_t> constexpr
     v1bit_t del_one(t_vdata_t*&vdata)
     {
 		vdata->~t_vdata_t();
-        _EFNOT(this->take<t_vdata_t>(vdata, 1), "mem-take error", return _FALSE);
+        this->take<t_vdata_t>(vdata, 1);
 		return _TRUTH;
 	}
-    template <typename t_vdata_t>
+    template <typename t_vdata_t> constexpr
     v1bit_t del_mul(t_vdata_t*&vdata, count_t count)
     {
         for (t_vdata_t*iter = vdata,*tail = iter + count; iter < tail; iter++)
         { iter->~t_vdata_t(); }
-        _EFNOT(this->take<t_vdata_t>(vdata, count), "mem-take error", return _FALSE);
+        this->take<t_vdata_t>(vdata, count);
 		return _TRUTH;
 	}
     /** edit **/
+    inline constexpr
     v1bit_t edit(mdata_t&mdata, msize_t s_old, msize_t s_new, msize_t malig)
     {
         mdata_t older = mdata;
@@ -174,11 +175,9 @@ public: /* actions */
     const
     {
         _ELOG("[memo::heapy->elog]=("
-            "[msize_used]=(%zu)"
-            "[msize_umax]=(%zu)"
+            "[msize_used]=(%zu)[msize_umax]=(%zu)"
             "[malig]=(%zu))",
-            this->msize_used,
-            this->msize_umax,
+            this->msize_used, this->msize_umax,
             this->malig
         );
     }
@@ -201,7 +200,7 @@ class stack_t : public a_owner_t
 public: /* typedef */
     using this_t = stack_t;
 public: /* codetor */
-    stack_t(msize_t msize = OWNER_MSIZE, owner_t*owner = _NULL);
+    stack_t(msize_t msize = _ZERO, owner_t*owner = _NULL);
     stack_t(const this_t&copy) = delete;
     stack_t(this_t&&copy) = delete;
     ~stack_t();
@@ -243,31 +242,19 @@ public: /* actions */
     {
         _ELOG("[memo::stack->elog]=("
             "[owner]=(%p)"
-            "[mdata_head]=(%p)"
-            "[mdata_tail]=(%p)"
-            "[mdata_back]=(%p)"
-            "[msize_full]=(%zu)"
-            "[msize_used]=(%zu)"
-            "[msize_umax]=(%zu)"
+            "[mdata_head]=(%p)[mdata_tail]=(%p)[mdata_back]=(%p)"
+            "[msize_full]=(%zu)[msize_used]=(%zu)[msize_umax]=(%zu)"
             "[malig]=(%zu))",
             this->owner,
-            this->mdata_head,
-            this->mdata_tail,
-            this->mdata_back,
-            this->msize_full,
-            this->msize_used,
-            this->msize_umax,
+            this->mdata_head, this->mdata_tail, this->mdata_back,
+            this->msize_full, this->msize_used, this->msize_umax,
             this->malig
         );
     }
 protected: /* datadef */
     owner_t*owner;
-    udata_t mdata_head; /* the first byte address */
-	udata_t mdata_tail; /* the last byte address */
-    udata_t mdata_back; /* the last used byte */
-	msize_t msize_full; /* the storage space */
-	msize_t msize_used; /* currently used space */
-	msize_t msize_umax; /* maximally used space */
+    udata_t mdata_head, mdata_tail, mdata_back;
+	msize_t msize_full, msize_used, msize_umax;
     msize_t malig;
 public: /* datadef */
     static this_t*global;
@@ -279,7 +266,7 @@ class arena_t : public a_owner_t
 public: /* typedef */
     using this_t = arena_t;
 public: /* codetor */
-    arena_t(msize_t msize = OWNER_MSIZE, owner_t*owner = _NULL);
+    arena_t(msize_t msize = _ZERO, owner_t*owner = _NULL);
     arena_t(const this_t&copy) = delete;
     arena_t(this_t&&copy) = delete;
     ~arena_t();
@@ -319,33 +306,21 @@ public: /* actions */
     {
         _ELOG("[memo::arena->elog]=("
             "[owner]=(%p)"
-            "[mdata_head]=(%p)"
-            "[mdata_tail]=(%p)"
-            "[mdata_back]=(%p)"
-            "[msize_full]=(%zu)"
-            "[msize_used]=(%zu)"
-            "[msize_umax]=(%zu)"
+            "[mdata_head]=(%p)[mdata_tail]=(%p)[mdata_back]=(%p)"
+            "[msize_full]=(%zu)[msize_used]=(%zu)[msize_umax]=(%zu)"
             "[mlink]=(%p)"
             "[malig]=(%zu))",
             this->owner,
-            this->mdata_head,
-            this->mdata_tail,
-            this->mdata_back,
-            this->msize_full,
-            this->msize_used,
-            this->msize_umax,
+            this->mdata_head, this->mdata_tail, this->mdata_back,
+            this->msize_full, this->msize_used, this->msize_umax,
             this->mlink,
             this->malig
         );
     }
 protected: /* datadef */
     owner_t*owner;
-    udata_t mdata_head; /* the first byte address */
-	udata_t mdata_tail; /* the last byte address */
-    udata_t mdata_back; /* the last used byte */
-	msize_t msize_full; /* the storage space */
-	msize_t msize_used; /* currently used space */
-	msize_t msize_umax; /* maximally used space */
+    udata_t mdata_head, mdata_tail, mdata_back;
+	msize_t msize_full, msize_used, msize_umax;
     mlink_t*mlink;
     msize_t malig;
 public: /* datadef */
@@ -365,7 +340,7 @@ public: /* typedef */
         mpage_t*npage = _NULL; /* next page */
     } mpage_t; /* mpage_t */
 public: /* codetor */
-    pager_t(msize_t psize = MPAGE_CSIZE, owner_t*owner = _NULL);
+    pager_t(msize_t psize = _ZERO, owner_t*owner = _NULL);
     pager_t(const this_t&copy) = delete;
     pager_t(this_t&&copy) = delete;
     ~pager_t();
@@ -395,11 +370,9 @@ public: /* actions */
     }
 protected: /* datadef */
     owner_t*owner;
-    mpage_t*hpage; /* head page */
-    mpage_t*bpage; /* back page */
-    mpage_t*tpage; /* tail page */
-    mlink_t*mlink = _NULL; /* memory link */
-    msize_t malig; /* alignment */
+    mpage_t*hpage,*bpage,*tpage;
+    mlink_t*mlink;
+    msize_t malig;
 public: /* datadef */
     static this_t*global;
 }; /* pager_t */
@@ -520,10 +493,10 @@ public: /* setters */
     v1bit_t setup(t_vargs_t&&...vargs)
     {
 		this->reset();
-        owner_t::global->template new_one<a_t_value_t>(
+        owner_t::global->new_one(
             this->vdata,
             std::forward<t_vargs_t>(vargs)...
-        ),
+        );
         owner_t::global->new_one(this->count, 1);
 		return _TRUTH;
 	}
@@ -533,15 +506,15 @@ public: /* setters */
 		this->reset();
         this->vdata = static_cast<value_t*>(refer.vdata);
         this->count = refer.count;
-        if (this->count != _NULL)
+        if (this->count)
         { *this->count += 1; }
-        else
+        else if (this->vdata)
         { owner_t::global->new_one(this->count, 1); }
 		return _TRUTH;
 	}
     v1bit_t reset()
     {
-        if (this->vet_count())
+        if (this->count)
         {
             if ((*this->count -= 1) == _ZERO)
             {
@@ -612,6 +585,10 @@ public: /* symbols */
     { return this->vdata == refer.get_vdata(); }
     v1bit_t operator!=(refer_t&refer) const
     { return this->vdata != refer.get_vdata(); }
+    v1bit_t operator==(mdata_t vdata) const
+    { return reinterpret_cast<mdata_t>(this->vdata) == vdata; }
+    v1bit_t operator!=(mdata_t mdata) const
+    { return reinterpret_cast<mdata_t>(this->vdata) == vdata; }
 private: /* datadef */
 	mutable value_t*vdata;
 	mutable count_t*count;
@@ -626,6 +603,8 @@ extern pager_t*pager;
 extern owner_t*owner;
 
 /** actions **/
+
+extern bool_t init();
 
 _NAMESPACE_LEAVE_MEMO
 

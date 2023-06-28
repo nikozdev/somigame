@@ -1,3 +1,5 @@
+#include "head.hxx"
+
 /* headers */
 
 #include "game.hxx"
@@ -6,24 +8,65 @@
 #include "ecos.hxx"
 #include "iput.hxx"
 
+#include "../lib/entt/src/entity/registry.hpp"
+#include "../lib/entt/src/entity/helper.hpp"
+
 /* content */
 
 _NAMESPACE_ENTER
 
 /** datadef **/
 
-ent_t ent_hero = entt::null;
-ent_t ent_pick = entt::null;
-ent_t ent_somi = entt::null;
+struct somi_t somi = {
+    .entity= entt::null,
+    /* visual */
+    .visual= _NULL,
+    /* family */
+    .family= _NULL
+};
+struct hero_t hero = {
+    .entity = entt::null,
+    /* logic */
+    .alive = _NULL,
+    .actor = _NULL,
+    .mover = _NULL,
+    /* sizes */
+    .asize = _NULL,
+    .gsize = _NULL,
+    .tsize = _NULL,
+    /* coord */
+    .apos2 = _NULL,
+    .zpos1 = _NULL,
+    .gpos3 = _NULL,
+    .tpos3 = _NULL,
+    .pivot = _NULL,
+    /* geometry */
+    .direc = _NULL,
+    /* visual */
+    .visual= _NULL,
+    /* family */
+    .family= _NULL,
+};
+struct pick_t pick = {
+    .entity = entt::null,
+    /* visual */
+    .visual= _NULL,
+    /* coord */
+    .apos2 = _NULL,
+    .gpos3 = _NULL,
+    .tpos3 = _NULL,
+    /* sizes */
+    .asize = _NULL,
+    /* family */
+    .family= _NULL,
+};
 
-ent_t tile_map[TILE_COUNT];
+ent_t tgrid[TCELL_CFULL];
 
-count_t action_count = 0;
+_SIGNALDEF(hero_rise)
+_SIGNALDEF(hero_died)
 
-hero_rise_signal_t hero_rise_signal;
-hero_died_signal_t hero_died_signal;
-
-pick_step_signal_t pick_step_signal;
+_SIGNALDEF(pick_step)
 
 /** actions **/
 
@@ -31,96 +74,256 @@ void game_init()
 {
     /* entity component system */
     if constexpr (_TRUTH)
+    { /* alive component */
+        entt::sigh_helper{ ecos }
+        .with<com_alive_t>().on_update<[](ecos_t&ecos, ent_t ent){
+            auto&alive = ecos.get<com_alive_t>(ent);
+            alive.timep = timer.now_mil;
+            if (ent == hero.entity)
+            {
+                if (alive.valid) { hero_rise_sigholder.publish(alive); }
+                else { hero_died_sigholder.publish(alive); }
+            }
+        }>().on_construct<[](ecos_t&ecos, ent_t ent){
+        }>().on_destroy<[](ecos_t&ecos, ent_t ent){
+        }>();
+    } /* alive component */
+    if constexpr (_TRUTH)
+    { /* actor component */
+        entt::sigh_helper{ ecos }
+        .with<com_actor_t>().on_update<[](ecos_t&ecos, ent_t ent){
+            auto&actor = ecos.get<com_actor_t>(ent);
+            actor.timep = timer.now_mil;
+        }>().on_construct<[](ecos_t&ecos, ent_t ent){
+        }>().on_destroy<[](ecos_t&ecos, ent_t ent){
+        }>();
+    } /* actor component */
+    if constexpr (_TRUTH)
+    { /* mover component */
+        entt::sigh_helper{ ecos }
+        .with<com_mover_t>().on_update<[](ecos_t&ecos, ent_t ent){
+            auto&mover = ecos.get<com_mover_t>(ent);
+            auto apos2 = ecos.get<com_apos2_t>(ent);
+            auto zpos1 = ecos.get<com_zpos1_t>(ent);
+            auto direc = ecos.get<com_direc_t>(ent);
+            auto actor = ecos.get<com_actor_t>(ent);
+            auto stepx = mover.move.x;
+            auto stepy = mover.move.y;
+            auto signx = get_num_sign(stepx);
+            auto signy = get_num_sign(stepy);
+            auto growx = TCELL_ASIZE_X * signx;
+            auto growy = TCELL_ASIZE_Y * signy;
+            if (mover.fall)
+            {
+            }
+            else
+            {
+            }
+            mover.move = apos2_t{ 0, 0 };
+        }>().on_construct<[](ecos_t&ecos, ent_t ent){
+        }>().on_destroy<[](ecos_t&ecos, ent_t ent){
+        }>();
+    } /* mover component */
+    if constexpr (_TRUTH)
     { /* the game entity */
-        auto ent_somi = ecos.create();
-        ecos.emplace<com_family_t>(ent_somi);
-        ecos.emplace<com_anchor_t>(ent_somi, RELPOS_MID, RELPOS_MID);
-        ecos.emplace<com_ename_t>(ent_somi, _ENAME_GAME);
-        ecos.emplace<com_coord_t>(ent_somi, 0, 0, 0);
-        ecos.emplace<com_visual_t>(ent_somi, _TRUTH, 0);
+        somi.entity= ecos.create();
+        /* family */
+        somi.family=&ecos.emplace<com_family_t>(somi.entity);
     }
     if constexpr (_TRUTH)
     { /* hero entity */
-        ent_hero = ecos.create();
-        auto&family_h = ecos.emplace<com_family_t>(ent_hero, ent_somi);
-        auto&visual_h = ecos.emplace<com_visual_t>(ent_hero, _TRUTH, 1);
-        auto&anchor_h = ecos.emplace<com_anchor_t>(ent_hero, RELPOS_MID, RELPOS_MID);
-        auto&ename_h = ecos.emplace<com_ename_t>(ent_hero, _ENAME_GAME_HERO);
-        auto&alive_h = ecos.emplace<com_alive_t>(ent_hero, _TRUTH);
-        auto&coord_h = ecos.emplace<com_coord_t>(ent_hero, 0, 0, 0);
-        ecos.emplace<com_sizes_t>(ent_hero, TILE_SCALE_X, TILE_SCALE_Y);
-        ecos.emplace<com_scale_t>(ent_hero, 1, 1);
-        ecos.emplace<com_color_t>(ent_hero, 0xff);
-        ecos.emplace<com_direc_t>(ent_hero, +0, -1);
-        ecos.emplace<com_faces_t>(ent_hero, com_faces_t{ .ilist = {
-            [_EFACE_F] = image_region_t{_IMAGE_GAME_HERO, pos2d_t{0x00,0x00}, sizes_t{0x10,0x10}},
-            [_EFACE_L] = image_region_t{_IMAGE_GAME_HERO, pos2d_t{0x10,0x00}, sizes_t{0x10,0x10}},
-            [_EFACE_B] = image_region_t{_IMAGE_GAME_HERO, pos2d_t{0x20,0x00}, sizes_t{0x10,0x10}},
-            [_EFACE_R] = image_region_t{_IMAGE_GAME_HERO, pos2d_t{0x30,0x00}, sizes_t{0x10,0x10}},
-        }});
+        hero.entity = ecos.create();
+        /* logic */
+        hero.alive =&ecos.emplace<com_alive_t>(hero.entity, alive_t{
+            .valid = _TRUTH,
+            .timep = timer.now_mil,
+        });
+        hero.actor =&ecos.emplace<com_actor_t>(hero.entity, actor_t{
+            .count = 0,
+            .timep = timer.now_mil,
+        });
+        hero.mover =&ecos.emplace<com_mover_t>(hero.entity, mover_t{
+            .fall = _TRUTH,
+            .move = apos2_t{
+                .x = 0,
+                .y = 0,
+            },
+        });
+        /* sizes */
+        hero.asize =&ecos.emplace<com_asize_t>(hero.entity, asize_t{
+            TCELL_ASIZE_X, TCELL_ASIZE_Y
+        });
+        hero.gsize = ecos.try_get<com_gsize_t>(hero.entity);
+        hero.tsize = ecos.try_get<com_tsize_t>(hero.entity);
+        /* coord */
+        hero.apos2 =&ecos.emplace<com_apos2_t>(hero.entity);
+        hero.zpos1 =&ecos.emplace<com_zpos1_t>(hero.entity);
+        hero.gpos3 = ecos.try_get<com_gpos3_t>(hero.entity);
+        hero.tpos3 = ecos.try_get<com_tpos3_t>(hero.entity);
+        hero.pivot =&ecos.emplace<com_pivot_t>(hero.entity, pivot_t{
+            .x = PIVOT_MID,
+            .y = PIVOT_MID,
+        });
+        /* geometry */
+        hero.direc =&ecos.emplace<com_direc_t>(hero.entity, direc_t{
+            .x = +0,
+            .y = -1
+        });
+        /* visual */
+        hero.visual=&ecos.emplace<com_visual_t>(hero.entity, _TRUTH);
+        ecos.emplace<com_rlayer_t>(hero.entity, 1);
+        ecos.emplace<com_color_t>(hero.entity, 0xff);
+        ecos.emplace<com_imreg_t>(hero.entity, com_imreg_t{
+            .index = _IMORI_GAME_HERO,
+            .rsize = rsize_t{
+                .x = RSIZE_MAX/4,
+                .y = RSIZE_MAX,
+            },
+        });
+        ecos.emplace<com_faces_t>(hero.entity, com_faces_t{
+            .ilist = {
+                imreg_t{
+                    .index = _IMORI_GAME_HERO,
+                    .rpos2 = rpos2_t{
+                        .x = RPOS2_MAX*0/4,
+                        .y = RPOS2_MIN,
+                    },
+                    .rsize = rsize_t{
+                        .x = RSIZE_MAX/4,
+                        .y = RSIZE_MAX,
+                    },
+                },
+                imreg_t{
+                    .index = _IMORI_GAME_HERO,
+                    .rpos2 = rpos2_t{
+                        .x = RPOS2_MAX*1/4,
+                        .y = RPOS2_MIN,
+                    },
+                    .rsize = rsize_t{
+                        .x = RSIZE_MAX/4,
+                        .y = RSIZE_MIN,
+                    },
+                },
+                imreg_t{
+                    .index = _IMORI_GAME_HERO,
+                    .rpos2 = rpos2_t{
+                        .x = RPOS2_MAX*2/4,
+                        .y = RPOS2_MIN,
+                    },
+                    .rsize = rsize_t{
+                        .x = RSIZE_MAX/4,
+                        .y = RSIZE_MIN,
+                    },
+                },
+                imreg_t{
+                    .index = _IMORI_GAME_HERO,
+                    .rpos2 = rpos2_t{
+                        .x = RPOS2_MAX*3/4,
+                        .y = RPOS2_MIN,
+                    },
+                    .rsize = rsize_t{
+                        .x = RSIZE_MAX/4,
+                        .y = RSIZE_MAX,
+                    },
+                },
+            },
+        });
+        /* family */
+        hero.family=&ecos.emplace<com_family_t>(hero.entity, family_t{
+            .ancestor = somi.entity,
+        });
         if constexpr (_TRUTH)
         { /* pick entity */
-            ent_pick = ecos.create();
-            auto&family_p = ecos.emplace<com_family_t>(ent_pick, ent_hero);
-            auto&visual_p = ecos.emplace<com_visual_t>(ent_pick, _FALSE, 1);
-            auto&ename_p = ecos.emplace<com_ename_t>(ent_pick, _ENAME_GAME_PICK);
-            auto&coord_p = ecos.emplace<com_coord_t>(ent_pick, 0, 0, 0);
-            auto&sizes_p = ecos.emplace<com_sizes_t>(ent_pick, TILE_SCALE_X, TILE_SCALE_Y);
-            auto&scale_p = ecos.emplace<com_scale_t>(ent_pick, 1, 1);
-            auto&color_p = ecos.emplace<com_color_t>(ent_pick, 0xff);
-            auto&image_p = ecos.emplace<com_image_t>(ent_pick, _IMAGE_GAME_PICK);
-            key_mode_set_signal.bind([&](key_mode_e mode){
-                if (mode == _KEY_MODE_PICK)
-                { visual_p.valid = _TRUTH; coord_p.x = 0; coord_p.y = 0; coord_p.z = 0; }
-                else
-                { visual_p.valid = _FALSE; }
+            pick.entity= ecos.create();
+            /* coord */
+            pick.apos2 =&ecos.emplace<com_apos2_t>(pick.entity, apos2_t{
+                .x = 0,
+                .y = 0,
+            });
+            pick.gpos3 = ecos.try_get<com_gpos3_t>(pick.entity);
+            pick.tpos3 = ecos.try_get<com_tpos3_t>(pick.entity);
+            pick.asize =&ecos.emplace<com_asize_t>(pick.entity, asize_t{
+                    .x = TCELL_ASIZE_X,
+                    .y = TCELL_ASIZE_Y,
+            });
+            /* visual */
+            pick.visual=&ecos.emplace<com_visual_t>(pick.entity, _FALSE);
+            ecos.emplace<com_rlayer_t>(pick.entity, 3);
+            ecos.emplace<com_color_t>(pick.entity, 0xff);
+            ecos.emplace<com_imreg_t>(pick.entity, imreg_t{
+                .index = _IMORI_GAME_PICK,
+                .rsize = {
+                    .x = RSIZE_MAX,
+                    .y = RSIZE_MAX,
+                },
+            });
+            key_mode_set_sigbinder.connect<[](key_mode_e mode){
+                ecos.replace<com_apos2_t>(pick.entity, apos2_t{ 0, 0 });
+                pick_step_sigholder.publish();
+                ecos.replace<com_visual_t>(pick.entity, mode == _KEY_MODE_PICK);
+            }>();
+            /* family */
+            pick.family=&ecos.emplace<com_family_t>(pick.entity, family_t{
+                .ancestor = hero.entity,
             });
         } /* pick */
         if constexpr (_TRUTH)
-        { /* grid */
-            auto ent_grid = get_by_ename({_ENAME_GFIX_GRID});
-            if (ecos.valid(ent_grid))
-            { set_ancestor(ent_grid, ent_hero); }
-        } /* grid */
+        { /* helpgrid */
+            if (ecos.valid(helpgrid.entity))
+            {
+                if (!vet_ancestor(helpgrid.entity, hero.entity))
+                {
+                    set_ancestor(helpgrid.entity, hero.entity);
+                }
+            }
+        } /* helpgrid */
         if constexpr (_TRUTH)
         { /* signals */
-            hero_rise_signal.bind([&](alive_t&alive){
-                coord_h.x = 0;
-                coord_h.y = 0;
-                coord_h.z = 0; 
-                key_mode_set(_KEY_MODE_MAIN);
-            });
-            hero_died_signal.bind([&](alive_t&alive){
-                key_mode_set(_KEY_MODE_DEAD);
-                static auto die_mil = timer.now_mil;
-                die_mil = timer.now_mil;
-                using relink_t = timer_t::signal_t::relink_t;
-                static relink_t relink;
-                relink = timer.sig_upd.bind([&](){
-                    if ((timer.now_mil - die_mil) > 3'000)
+            struct listener_t {
+                inline void on_update(update_event_t&update)
+                {
+                    if (!hero.alive->valid && ((timer.now_mil - hero.alive->timep) > 3'000))
                     {
-                        relink->quit();
-                        alive.valid = _TRUTH;
-                        hero_rise_signal.call(alive);
+                        hero.alive->valid = _TRUTH;
+                        ecos.patch<com_alive_t>(hero.entity);
                     }
-                });
-            });
+                }
+            } static listener{};
+            hero_rise_sigbinder.connect<[](const alive_t&alive){
+                ecos.replace<com_apos2_t>(hero.entity, apos2_t{ 0, 0 });
+                key_mode_set(_KEY_MODE_MAIN);
+                timer.dispatcher.sink<update_event_t>()
+                    .disconnect<&listener_t::on_update>(listener);
+            }>();
+            hero_died_sigbinder.connect<[](const alive_t&alive){
+                key_mode_set(_KEY_MODE_DEAD);
+                timer.dispatcher.sink<update_event_t>()
+                    .connect<&listener_t::on_update>(listener);
+            }>();
         } /* signals */
+        /*
+        static auto animator = animator_t(hero.entity);
+        animator.insert<poses_t>(0, 10000, 32,&poses_t::y);
+        animator.play();
+        */
     } /* hero */
     if constexpr (_TRUTH)
     { /* tilemap */
-        ecos.on_construct<com_tile_t>().connect<[](ecos_t&ecos, entt::entity ent)
+        entt::sigh_helper{ ecos }
+        .with<com_tcell_t>().on_update<[](ecos_t&ecos, ent_t ent){
+        }>().on_construct<[](ecos_t&ecos, entt::entity ent)
         {
-        }>();
-        ecos.on_destroy<com_tile_t>().connect<[](ecos_t&ecos, entt::entity ent)
+        }>().on_destroy<[](ecos_t&ecos, entt::entity ent)
         {
         }>();
     }
-    if constexpr (_TRUTH)
+    if constexpr (_FALSE)
     { /* build */
-        for (auto iter = 0; iter < TILE_COUNT; iter++)
-        { tile_map[iter] = entt::null; }
-        auto halfx = GAME_HALFC_X / 0x08, halfy = GAME_HALFC_Y / 0x08, halfz = GAME_HALFC_Z / 0x08;
+        for (auto iter = 0; iter < TCELL_CFULL; iter++)
+        { tgrid[iter] = entt::null; }
+        auto halfx = TCELL_CHALF_X / 0x08;
+        auto halfy = TCELL_CHALF_Y / 0x08;
+        auto halfz = TCELL_CHALF_Z / 0x08;
         for (auto iz = -halfz; iz < +halfz; iz++)
         {
             for (auto iy = -halfy; iy < +halfy; iy++)
@@ -132,327 +335,97 @@ void game_init()
                     }
                     else
                     {
-                        auto ent = set_tile_into_tile_coord(coord_t{ix,iy,iz},{});
+                        auto ent = set_tcell_into_tpos3(tpos3_t{ix,iy,iz},tcell_t{});
                         ecos.emplace<com_floor_t>(ent);
                     }
                 }
             }
         }
     }
-    else
+    else if constexpr (_TRUTH)
     {
-        for (auto iter = 0; iter < TILE_COUNT; iter++)
-        { tile_map[iter] = entt::null; }
-        auto halfx = 0x08, halfy = 0x04;
+        for (auto iter = 0; iter < TCELL_CFULL; iter++)
+        { tgrid[iter] = entt::null; }
+        auto halfx = 0x04, halfy = 0x02;
         for (auto iy = -halfy; iy < +halfy; iy++)
         {
             for (auto ix = -halfx; ix < +halfx; ix++)
             {
-                auto ent = set_tile_into_tile_coord(coord_t{ix,iy,0},{});
+                auto ent = set_tcell_into_tpos3(tpos3_t{ix,iy,0},tcell_t{});
                 ecos.emplace<com_floor_t>(ent);
             }
         }
     } /* build */
 }
 
-void game_loop()
-{
-    if constexpr (_FALSE)
-    { /* tilemap */
-        for (auto iz = 0; iz < TILE_COUNT_Z; iz++)
-        {
-            const auto stepz = iz * TILE_COUNT_Z;
-            for (auto iy = 0; iy < TILE_COUNT_Y; iy++)
-            {
-                const auto stepy = iy * TILE_COUNT_X;
-                for (auto ix = 0; ix < TILE_COUNT_X; ix++)
-                {
-                    auto stepx = ix;
-                    auto ent = tile_map[stepz + stepy + stepx];
-                    if (ecos.valid(ent))
-                    {
-                    }
-                    else
-                    {
-                    }
-                }
-            }
-        }
-    }
-    if constexpr (_FALSE)
-    { /* pick update */
-        auto&coord_h = ecos.get<com_coord_t>(ent_hero);
-        auto&coord_p = ecos.get<com_coord_t>(ent_pick);
-    }
-    if constexpr (_FALSE)
-    {
-        for (auto&&[ent, coord_e] : ecos.view<com_coord_t>().each())
-        {
-            if (vet_ancestor(ent, entt::null) || vet_ancestor(ent, ent_somi))
-            {
-                while (vet_floor_from_coord(coord_e) == _FALSE
-                    && (coord_e.z > -GAME_HALFC_Z)
-                ) { coord_e.z -= TILE_SCALE_Z; }
-                if (vet_floor_from_coord(coord_e) == _FALSE)
-                { kill_ent(ent); }
-            }
-        }
-    }
-}
-
-void inc_action_count(count_t inc)
-{
-    if (inc < 1) { return; }
-    action_count += inc;
-}
-
-bool proc_ent(ent_t ent)
-{
-    auto&coord_e = ecos.get<com_coord_t>(ent);
-    if (vet_ancestor(ent, entt::null) || vet_ancestor(ent, ent_somi))
-    {
-        while (vet_floor_from_coord(coord_e) == _FALSE
-            && (coord_e.z > -GAME_HALFC_Z)
-        ) { coord_e.z -= TILE_SCALE_Z; }
-        if (vet_floor_from_coord(coord_e) == _FALSE)
-        { kill_ent(ent); }
-    }
-    return _TRUTH;
-}
-bool kill_ent(ent_t ent)
-{
-    if (auto*alive = ecos.try_get<com_alive_t>(ent))
-    {
-        if (alive->valid)
-        {
-            alive->valid = _FALSE;
-            if (ent == ent_hero)
-            { hero_died_signal.call(*alive); }
-            return _TRUTH;
-        }
-        else { return _FALSE; }
-    }
-    else { return _FALSE; }
-}
-
-/*** hero ***/
-
-/**** goto ****/
-
-void hero_goto_x(v1s_t gotox)
-{
-    auto&&coord_h = ecos.get<com_coord_t>(ent_hero);
-    if (gotox == coord_h.x) { return; }
-    auto&&direc_h = ecos.get<com_direc_t>(ent_hero);
-    direc_h.x = get_num_sign(gotox - coord_h.x);
-    direc_h.y = 0;
-    coord_h.x = std::clamp(gotox, -GAME_HALFS_X, +GAME_HALFS_X);
-    proc_ent(ent_hero);
-}
-void hero_goto_y(v1s_t gotoy)
-{
-    auto&&coord_h = ecos.get<com_coord_t>(ent_hero);
-    if (gotoy == coord_h.y) { return; }
-    auto&&direc_h = ecos.get<com_direc_t>(ent_hero);
-    direc_h.x = 0;
-    direc_h.y = get_num_sign(gotoy - coord_h.y);
-    coord_h.y = std::clamp(gotoy, -GAME_HALFS_Y, +GAME_HALFS_Y);
-    proc_ent(ent_hero);
-}
-void hero_goto_z(v1s_t gotoz)
-{
-    auto&&coord_h = ecos.get<com_coord_t>(ent_hero);
-    if (gotoz == coord_h.z) { return; }
-    auto&&direc_h = ecos.get<com_direc_t>(ent_hero);
-    direc_h.x = 0;
-    direc_h.y = get_num_sign(gotoz - coord_h.z);
-    coord_h.z = std::clamp(gotoz, -GAME_HALFS_Z, +GAME_HALFS_Z);
-    proc_ent(ent_hero);
-}
-
-/**** step ****/
-
-void hero_step_x(v1s_t stepx)
-{
-    if (stepx == 0) { return; }
-    auto&&coord_h = ecos.get<com_coord_t>(ent_hero);
-    auto&&direc_h = ecos.get<com_direc_t>(ent_hero);
-    const auto anchor_h = ecos.get<com_anchor_t>(ent_hero);
-    const auto sizes_h = ecos.get<com_sizes_t>(ent_hero);
-    const auto scale_h = ecos.get<com_scale_t>(ent_hero);
-    auto coord_f = coord_h;
-    coord_f.x += get_anchor_coord(anchor_h.x, sizes_h.w, scale_h.x);
-    coord_f.y += get_anchor_coord(anchor_h.y, sizes_h.h, scale_h.y);
-    coord_f = from_coord_into_tile_coord(coord_f);
-    auto signx = get_num_sign(stepx);
-    auto growx = TILE_SCALE_X * signx;
-    coord_f.x += signx;
-    while (vet_floor_from_tile_coord(coord_f) && stepx != 0)
-    {
-        coord_h.x += growx;
-        coord_f.x += signx;
-        stepx -= signx;
-        inc_action_count(1);
-    }
-    direc_h.x = signx;
-    direc_h.y = 0;
-}
-void hero_step_y(v1s_t stepy)
-{
-    if (stepy == 0) { return; }
-    auto&&coord_h = ecos.get<com_coord_t>(ent_hero);
-    auto&&direc_h = ecos.get<com_direc_t>(ent_hero);
-    const auto anchor_h = ecos.get<com_anchor_t>(ent_hero);
-    const auto sizes_h = ecos.get<com_sizes_t>(ent_hero);
-    const auto scale_h = ecos.get<com_scale_t>(ent_hero);
-    auto coord_f = coord_h;
-    coord_f.x += get_anchor_coord(anchor_h.x, sizes_h.w, scale_h.x);
-    coord_f.y += get_anchor_coord(anchor_h.y, sizes_h.h, scale_h.y);
-    coord_f = from_coord_into_tile_coord(coord_f);
-    auto signy = get_num_sign(stepy);
-    auto growy = TILE_SCALE_Y * signy;
-    coord_f.y += signy;
-    while (vet_floor_from_tile_coord(coord_f) && stepy != 0)
-    {
-        coord_h.y += growy;
-        coord_f.y += signy;
-        stepy -= signy;
-        inc_action_count(1);
-    }
-    direc_h.x = 0;
-    direc_h.y = signy;
-}
-
-void pick_step_x(v1s_t stepx)
-{
-    if (stepx == 0) { return; }
-    auto&&coord_h = ecos.get<com_coord_t>(ent_hero);
-    auto&&coord_p = ecos.get<com_coord_t>(ent_pick);
-    auto coord_f = from_coord_into_tile_coord(coord_p);
-    auto rng_x = 2;
-    auto rng_y = 2;
-    auto dif_x = std::abs(coord_f.x + stepx);
-    auto dif_y = std::abs(coord_f.y);
-    if ((dif_x > rng_x)
-        || (dif_x > (rng_x - 1) && dif_y > (rng_y - 1))
-    ) { return; }
-    auto signx = get_num_sign(stepx);
-    auto growx = TILE_SCALE_X * signx;
-    while (stepx != 0)
-    {
-        coord_p.x += growx;
-        stepx -= signx;
-        inc_action_count(1);
-    }
-    pick_step_signal.call(coord_p);
-}
-void pick_step_y(v1s_t stepy)
-{
-    if (stepy == 0) { return; }
-    auto&&coord_h = ecos.get<com_coord_t>(ent_hero);
-    auto&&coord_p = ecos.get<com_coord_t>(ent_pick);
-    auto coord_f = from_coord_into_tile_coord(coord_p);
-    auto rng_x = 2;
-    auto rng_y = 2;
-    auto dif_x = std::abs(coord_f.x);
-    auto dif_y = std::abs(coord_f.y + stepy);
-    if ((dif_y > rng_y)
-        || (dif_x > (rng_x - 1) && dif_y > (rng_y - 1))
-    ) { return; }
-    auto signy = get_num_sign(stepy);
-    auto growy = TILE_SCALE_Y * signy;
-    while (stepy != 0)
-    {
-        coord_p.y += growy;
-        stepy -= signy;
-        inc_action_count(1);
-    }
-    pick_step_signal.call(coord_p);
-}
-
-void hero_turn(bool_t lside)
-{
-    auto&&direc_h = ecos.get<com_direc_t>(ent_hero);
-    direc_h = get_vec_turn(direc_h, lside);
-}
-
 /** getters **/
 
-count_t get_action_count()
+ent_t get_tcell_from_tpos3(tpos3_t tpos3)
 {
-    return action_count;
-}
-
-ent_t get_tile_from_coord(coord_t coord)
-{ return get_tile_from_tile_coord(from_coord_into_tile_coord(coord)); }
-ent_t get_tile_from_tile_coord(coord_t coord)
-{
-    auto steps = from_tile_coord_into_tile_steps(coord);
+    auto tkey3 = get_tkey3_from_tpos3(tpos3);
     if (_FALSE
-        || steps.x < 0 || steps.x >= TILE_COUNT_X
-        || steps.y < 0 || steps.y >= TILE_COUNT_Y
-        || steps.z < 0 || steps.z >= TILE_COUNT_Z
+        || tkey3.x < 0 || tkey3.x >= TCELL_CFULL_X
+        || tkey3.y < 0 || tkey3.y >= TCELL_CFULL_Y
+        || tkey3.z < 0 || tkey3.z >= TCELL_CFULL_Z
     ) { return entt::null; }
-    return tile_map[from_tile_steps_into_tile_mstep(steps)];
+    return tgrid[get_tkey1_from_tkey3(tkey3)];
 }
 
 /** vetters **/
 
-bool vet_tile_from_coord(coord_t coord)
-{ return ecos.valid(get_tile_from_coord(coord)); }
-bool vet_tile_from_tile_coord(coord_t coord)
-{ return ecos.valid(get_tile_from_tile_coord(coord)); }
+bool vet_tcell_from_tpos3(tpos3_t tpose)
+{ return ecos.try_get<com_tcell_t>(get_tcell_from_tpos3(tpose)); }
 
-bool vet_floor_from_coord(coord_t coord)
-{ return ecos.try_get<com_floor_t>(get_tile_from_coord(coord)); }
-bool vet_floor_from_tile_coord(coord_t coord)
-{ return ecos.try_get<com_floor_t>(get_tile_from_tile_coord(coord)); }
+bool vet_floor_from_tpos3(tpos3_t tpose)
+{ return ecos.try_get<com_floor_t>(get_tcell_from_tpos3(tpose)); }
 
-bool vet_block_from_coord(coord_t coord)
-{ return ecos.try_get<com_block_t>(get_tile_from_coord(coord)); }
-bool vet_block_from_tile_coord(coord_t coord)
-{ return ecos.try_get<com_block_t>(get_tile_from_tile_coord(coord)); }
+bool vet_block_from_tpos3(tpos3_t tpose)
+{ return ecos.try_get<com_block_t>(get_tcell_from_tpos3(tpose)); }
 
 /** setters **/
 
-ent_t set_tile_into_tile_coord(coord_t coord, tile_t tile)
+ent_t set_tcell_into_tpos3(tpos3_t tpos3, tcell_t tcell)
 {
-    auto steps = from_tile_coord_into_tile_steps(coord);
+    tkey3_t tkey3 = get_tkey3_from_tpos3(tpos3);
     if (_FALSE
-        || steps.x < 0 || steps.x >= TILE_COUNT_X
-        || steps.y < 0 || steps.y >= TILE_COUNT_Y
-        || steps.z < 0 || steps.z >= TILE_COUNT_Z
+        || tkey3.x < 0 || tkey3.x >= TCELL_CFULL_X
+        || tkey3.y < 0 || tkey3.y >= TCELL_CFULL_Y
+        || tkey3.z < 0 || tkey3.z >= TCELL_CFULL_Z
     ) { return entt::null; }
-    auto&ent = tile_map[from_tile_steps_into_tile_mstep(steps)];
-    if (ecos.valid(ent)) { ecos.destroy(ent); }
-    ent = ecos.create();
-    ecos.emplace<com_family_t>(ent, ent_somi);
-    ecos.emplace<com_visual_t>(ent, _TRUTH, 0);
-    ecos.emplace<com_anchor_t>(ent, RELPOS_MID, RELPOS_MID);
-    ecos.emplace<com_coord_t>(ent, from_tile_coord_into_coord(coord));
-    ecos.emplace<com_sizes_t>(ent, TILE_SCALE_X, TILE_SCALE_Y);
-    ecos.emplace<com_scale_t>(ent, 1, 1);
-    ecos.emplace<com_color_t>(ent, 0xff);
-    ecos.emplace<com_image_t>(ent, _IMAGE_TILE_TEST, pos2d_t{0,0}, sizes_t{0,0});
-    ecos.emplace<com_tile_t>(ent, tile);
-    if constexpr (_FALSE)
-    {
-        auto ent_text = ecos.create();
-        ecos.emplace<com_family_t>(ent_text, ent);
-        ecos.emplace<com_visual_t>(ent_text, _TRUTH, 0);
-        ecos.emplace<com_anchor_t>(ent_text, RELPOS_MID, RELPOS_MID);
-        ecos.emplace<com_relpos_t>(ent_text, RELPOS_MID, RELPOS_MID);
-        ecos.emplace<com_coord_t>(ent_text, 0, 0, 0);
-        ecos.emplace<com_sizes_t>(ent_text, TILE_SCALE_X, TILE_SCALE_Y);
-        ecos.emplace<com_scale_t>(ent_text, 1, 1);
-        ecos.emplace<com_color_t>(ent_text, 0x80);
-        auto&cstring = ecos.emplace<com_cstring_t>(ent_text, 32);
-        snprintf(cstring.mdata, cstring.msize,
-            "x%+04d\ny%+04d\nz%+04d",
-            coord.x, coord.y, coord.z
-        );
+    auto&entity = tgrid[get_tkey1_from_tkey3(tkey3)];
+    if (ecos.valid(entity)) { ecos.destroy(entity); }
+    gpos3_t gpos3 = get_gpos3_from_tpos3(tpos3);
+    if constexpr (_TRUTH)
+    { /* entity construction */
+        entity = ecos.create();
+        /* sizes */
+        ecos.emplace<com_asize_t>(entity, asize_t{
+            .x = TCELL_ASIZE_X,
+            .y = TCELL_ASIZE_Y,
+        });
+        /* coord */
+        ecos.emplace<com_apos2_t>(entity, com_apos2_t{ gpos3.x, gpos3.y });
+        ecos.emplace<com_zpos1_t>(entity, com_zpos1_t{ gpos3.z });
+        /* visual */
+        ecos.emplace<com_visual_t>(entity, _TRUTH);
+        ecos.emplace<com_color_t>(entity, color_t{
+            .v = 0xff,
+        });
+        ecos.emplace<com_imreg_t>(entity, imreg_t{
+            .index = _IMORI_TILE_TEST,
+            .rsize = rsize_t{
+                .x = RSIZE_MAX,
+                .y = RSIZE_MAX,
+            },
+        });
+        /* family */
+        ecos.emplace<com_family_t>(entity, family_t{
+            .ancestor = somi.entity,
+        });
+        /* tilegrid */
+        ecos.emplace<com_tcell_t>(entity, tcell);
     }
-    return ent;
+    return entity;
 }
 
 _NAMESPACE_LEAVE
