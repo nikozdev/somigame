@@ -64,7 +64,9 @@ void util_init()
     struct gfix_listener_t
     {
         /* geometry */
-        void update_grect_trect(ecos_t&ecos, ent_t ent) {
+        void update_grect_trect(ecos_t&ecos, ent_t ent)
+        {
+            if (ecos.valid(ent) == _FALSE) { return; }
             /* sizes */
             gsize_t gsize_e = { 0, 0 };
             if (auto*gsize = ecos.try_get<com_gsize_t>(ent))
@@ -102,6 +104,7 @@ void util_init()
         /* sizes */
         void update_gsize_tsize(ecos_t&ecos, ent_t ent)
         {
+            if (ecos.valid(ent) == _FALSE) { return; }
             /* sizes */
             gsize_t gsize_e = { 0, 0 };
             if (auto*asize_e = ecos.try_get<com_asize_t>(ent))
@@ -165,12 +168,14 @@ void util_init()
         /* coord */
         void update_gpos3_tpos3(ecos_t&ecos, ent_t ent)
         {
+            if (ecos.valid(ent) == _FALSE) { return; }
             /* coord */
             gpos3_t gpos3_e = { 0, 0 };
             if (auto*apos2_e = ecos.try_get<com_apos2_t>(ent))
             { gpos3_e.x = apos2_e->x; gpos3_e.y = apos2_e->y; }
             if (auto*zpos1_e = ecos.try_get<com_zpos1_t>(ent))
             { gpos3_e.z = zpos1_e->z; }
+            /* family */
             if (auto*family_e = ecos.try_get<com_family_t>(ent))
             { /* family */
                 auto ancestor = family_e->ancestor;
@@ -183,6 +188,11 @@ void util_init()
                             gpos3_e.x += gsize_a->x * rpos2_e->x / RPOS2_DIV;
                             gpos3_e.y += gsize_a->y * rpos2_e->y / RPOS2_DIV;
                         } /* relative size */
+                        if (auto*pivot_a = ecos.try_get<com_pivot_t>(ancestor))
+                        { /* pivot */
+                            gpos3_e.x -= gsize_a->x * pivot_a->x / PIVOT_DIV;
+                            gpos3_e.y -= gsize_a->y * pivot_a->y / PIVOT_DIV;
+                        } /* pivot */
                     } /* ancestor global size */
                     if (auto*gpos3_a = ecos.try_get<com_gpos3_t>(ancestor))
                     { /* ancestor global size */
@@ -238,6 +248,7 @@ void util_init()
         /* visual */
         void update_visual(ecos_t&ecos, ent_t ent)
         {
+            if (ecos.valid(ent) == _FALSE) { return; }
             tpos3_t tpos3 = { 0, 0, 0 };
             if (auto*tpos3_e = ecos.try_get<com_tpos3_t>(ent))
             { tpos3 =*tpos3_e; }
@@ -246,6 +257,7 @@ void util_init()
         }
         void update_glayer(ecos_t&ecos, ent_t ent)
         {
+            if (ecos.valid(ent) == _FALSE) { return; }
             /* layer */
             glayer_t glayer_e = { 0 };
             if (auto*rlayer_e = ecos.try_get<com_rlayer_t>(ent))
@@ -293,6 +305,7 @@ void util_init()
         }
         void update_imreg(ecos_t&ecos, ent_t ent)
         {
+            if (ecos.valid(ent) == _FALSE) { return; }
             /* sizes */
             isize_t isize = { 0, 0 };
             /* coord */
@@ -336,6 +349,7 @@ void util_init()
         }
         void update(ecos_t&ecos, ent_t ent)
         {
+            if (ecos.valid(ent) == _FALSE) { return; }
             /* sizes */
             gsize_t gsize_e = { 0, 0 };
             if (auto*asize_e = ecos.try_get<com_asize_t>(ent))
@@ -367,6 +381,11 @@ void util_init()
                             gpos3_e.x += gsize_a->x * rpos2_e->x / RPOS2_DIV;
                             gpos3_e.y += gsize_a->y * rpos2_e->y / RPOS2_DIV;
                         } /* entity relative pos2 */
+                        if (auto*pivot_a = ecos.try_get<com_pivot_t>(ancestor))
+                        { /* pivot */
+                            gpos3_e.x -= gsize_a->x * pivot_a->x / PIVOT_DIV;
+                            gpos3_e.y -= gsize_a->y * pivot_a->y / PIVOT_DIV;
+                        } /* pivot */
                     } /* ancestor global size */
                     if (auto*gpos3_a = ecos.try_get<com_gpos3_t>(ancestor))
                     { /* ancestor global pos3 */

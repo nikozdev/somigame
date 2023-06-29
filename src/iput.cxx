@@ -203,11 +203,16 @@ void iput_init()
             });
             /*** zoom ***/
             key_bind_set(_KEY_MODE_VIEW, "z", [](int narg){
+                auto view_entity = ecos.ctx().get<entity_t>("view_entity"_hstr);
+                auto&view_asize = ecos.get<com_asize_t>(view_entity);
+                view_asize.x = std::max(view_asize.x << narg, VIEW_ASIZE_X/2);
+                view_asize.y = std::max(view_asize.y << narg, VIEW_ASIZE_Y/2);
+                ecos.replace<com_asize_t>(view_entity, view_asize);
             });
         }
         if constexpr (_TRUTH)
         { /** hero **/
-            struct listener_t {
+            struct hero_listener_t {
                 auto&get_mover()
                 { return ecos.get<com_mover_t>(this->hero_entity); }
                 void on_game_init()
@@ -237,51 +242,89 @@ void iput_init()
                     ecos.replace<com_mover_t>(this->hero_entity, mover);
                 }
                 entity_t hero_entity;
-            } static listener{};
-            game_init_bot_signal.binder.connect<&listener_t::on_game_init>(listener);
-            key_bind_set(_KEY_MODE_HERO, "a", [](int narg){ listener.on_key_a(narg); });
-            key_bind_set(_KEY_MODE_HERO, "d", [](int narg){ listener.on_key_d(narg); });
-            key_bind_set(_KEY_MODE_HERO, "s", [](int narg){ listener.on_key_s(narg); });
-            key_bind_set(_KEY_MODE_HERO, "w", [](int narg){ listener.on_key_w(narg); });
+            } static hero_listener{};
+            game_init_bot_signal.binder.connect<
+                &hero_listener_t::on_game_init
+                >(hero_listener);
+            key_bind_set(_KEY_MODE_HERO, "a", [](int narg){
+                hero_listener.on_key_a(narg);
+            });
+            key_bind_set(_KEY_MODE_HERO, "d", [](int narg){
+                hero_listener.on_key_d(narg);
+            });
+            key_bind_set(_KEY_MODE_HERO, "s", [](int narg){
+                hero_listener.on_key_s(narg);
+            });
+            key_bind_set(_KEY_MODE_HERO, "w", [](int narg){
+                hero_listener.on_key_w(narg);
+            });
         } /* pick */
         if constexpr (_TRUTH)
         { /** pick **/
-            struct listener_t {
-                auto&get_mover()
-                { return ecos.get<com_mover_t>(this->pick_entity); }
+            struct pick_listener_t
+            {
                 void on_game_init()
-                { this->pick_entity = ecos.ctx().get<ent_t>("pick_entity"_hstr); }
+                {
+                    this->pick_entity = ecos.ctx().get<ent_t>("pick_entity"_hstr);
+                    this->hero_entity = ecos.ctx().get<ent_t>("hero_entity"_hstr);
+                }
                 void on_key_a(int narg)
                 {
-                    auto&mover = this->get_mover();
+                    auto&mover = ecos.get<com_mover_t>(pick_entity);
                     mover.move.x -= 1*(get_num_sign(narg)+narg);
                     ecos.replace<com_mover_t>(this->pick_entity, mover);
                 }
                 void on_key_d(int narg)
                 {
-                    auto&mover = this->get_mover();
+                    auto&mover = ecos.get<com_mover_t>(pick_entity);
                     mover.move.x += 1*(get_num_sign(narg)+narg);
                     ecos.replace<com_mover_t>(this->pick_entity, mover);
                 }
                 void on_key_s(int narg)
                 {
-                    auto&mover = this->get_mover();
+                    auto&mover = ecos.get<com_mover_t>(pick_entity);
                     mover.move.y -= 1*(get_num_sign(narg)+narg);
                     ecos.replace<com_mover_t>(this->pick_entity, mover);
                 }
                 void on_key_w(int narg)
                 {
-                    auto&mover = this->get_mover();
+                    auto&mover = ecos.get<com_mover_t>(pick_entity);
                     mover.move.y += 1*(get_num_sign(narg)+narg);
                     ecos.replace<com_mover_t>(this->pick_entity, mover);
                 }
+                void on_key_g(int narg)
+                {
+                    tpos3_t hero_tpos3 = ecos.get<com_tpos3_t>(this->hero_entity);
+                    tpos3_t pick_tpos3 = ecos.get<com_tpos3_t>(this->pick_entity);
+                    mover_t&hero_mover = ecos.get<com_mover_t>(this->hero_entity);
+                    hero_mover.move = {
+                        .x = pick_tpos3.x - hero_tpos3.x,
+                        .y = pick_tpos3.y - hero_tpos3.y,
+                    };
+                    ecos.patch<com_mover_t>(this->hero_entity);
+                    ecos.replace<com_apos2_t>(this->pick_entity);
+                }
                 entity_t pick_entity;
-            } static listener{};
-            game_init_bot_signal.binder.connect<&listener_t::on_game_init>(listener);
-            key_bind_set(_KEY_MODE_PICK, "a", [](int narg){ listener.on_key_a(narg); });
-            key_bind_set(_KEY_MODE_PICK, "d", [](int narg){ listener.on_key_d(narg); });
-            key_bind_set(_KEY_MODE_PICK, "s", [](int narg){ listener.on_key_s(narg); });
-            key_bind_set(_KEY_MODE_PICK, "w", [](int narg){ listener.on_key_w(narg); });
+                entity_t hero_entity;
+            } static pick_listener{};
+            game_init_bot_signal.binder.connect<
+                &pick_listener_t::on_game_init
+                >(pick_listener);
+            key_bind_set(_KEY_MODE_PICK, "a", [](int narg){
+                pick_listener.on_key_a(narg);
+            });
+            key_bind_set(_KEY_MODE_PICK, "d", [](int narg){
+                pick_listener.on_key_d(narg);
+            });
+            key_bind_set(_KEY_MODE_PICK, "s", [](int narg){
+                pick_listener.on_key_s(narg);
+            });
+            key_bind_set(_KEY_MODE_PICK, "w", [](int narg){
+                pick_listener.on_key_w(narg);
+            });
+            key_bind_set(_KEY_MODE_PICK, "g", [](int narg){
+                pick_listener.on_key_g(narg);
+            });
         } /* pick */
     } /* keybinds */
 }

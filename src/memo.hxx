@@ -4,8 +4,6 @@
 
 #include "head.hxx"
 
-#include <new>
-
 /* defines */
 
 #define _NAMESPACE_ENTER_MEMO namespace memo {

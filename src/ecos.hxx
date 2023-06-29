@@ -7,8 +7,6 @@
 #include "gfix.hxx"
 #include "game.hxx"
 
-#include "../lib/entt/src/entity/registry.hpp"
-
 /* defines */
 
 /* content */
@@ -211,10 +209,9 @@ using com_irect_t = irect_t;
 /**** visual ****/
 
 using com_visual_t= visual_t;
-using com_vrange_t= vrange_t;
-
 using com_rlayer_t= rlayer_t;
 using com_glayer_t= glayer_t;
+using com_vrange_t= vrange_t;
 
 using com_color_t = color_t;
 using com_imreg_t = imreg_t;
@@ -232,8 +229,6 @@ using com_mover_t = mover_t;
 /**** tilegrid ****/
 
 using com_tcell_t = tcell_t;
-using com_floor_t = floor_t;
-using com_block_t = block_t;
 
 /** actions **/
 

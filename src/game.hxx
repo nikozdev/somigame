@@ -6,8 +6,6 @@
 #include "util.hxx"
 #include "gfix.hxx"
 
-#include "../lib/entt/src/entity/fwd.hpp"
-
 /* content */
 
 _NAMESPACE_ENTER
@@ -41,6 +39,15 @@ constexpr auto TGRID_AHALF_Z = TCELL_CHALF_Z * TCELL_ASIZE_Z;
 
 typedef struct family_t family_t;
 
+/** enumdef **/
+
+typedef enum tilet_e {
+    _TILET_NONE = 0x0,
+    _TILET_TEST_FLOOR,
+    _TILET_TEST_BLOCK,
+    _TILET_COUNT
+} tilet_e;
+
 /** typedef **/
 
 /*** structs ***/
@@ -61,16 +68,8 @@ typedef struct mover_t {
 } mover_t; /* anything what can move or be moved */
 
 typedef struct tcell_t {
-    bool _;
+    tilet_e tilet = _TILET_NONE; /* the tile type */
 } tcell_t; /* tile cell */
-
-typedef struct floor_t {
-    bool _;
-} floor_t; /* what can be walked on */
-
-typedef struct block_t {
-    bool _;
-} block_t; /* what cannot be passed through */
 
 /** actions **/
 
@@ -129,6 +128,9 @@ inline bool vet_block_from_gpos3(gpos3_t gpos3)
 
 /** setters **/
 
-ent_t set_tcell_into_tpos3(tpos3_t tpos3, tcell_t tcell);
+ent_t set_tcell_into_tpos3(
+    tpos3_t tpos3,
+    tcell_t tcell = { .tilet = _TILET_TEST_FLOOR }
+);
 
 _NAMESPACE_LEAVE

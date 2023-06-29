@@ -19,7 +19,7 @@ constexpr auto VIEW_ASIZE_Y = UNIT_ASIZE_Y * VIEW_RATIO_Y;
 
 constexpr auto GUIS_ASIZE_X = UNIT_ASIZE_X * 2;
 constexpr auto GUIS_ASIZE_Y = UNIT_ASIZE_Y;
-constexpr auto GUIS_RSIZE_X = RSIZE_MAX / VIEW_RATIO_X;
+constexpr auto GUIS_RSIZE_X = RSIZE_MAX * 4 / VIEW_RATIO_X;
 constexpr auto GUIS_RSIZE_Y = RSIZE_MAX / VIEW_RATIO_Y;
 constexpr auto GUIS_LAYER = 0xff;
 
@@ -76,16 +76,38 @@ typedef struct faces_t {
     imreg_t ilist[_EFACE_COUNT];
 } faces_t;
 
+typedef class visual_t
+{
+public: /* getters */
+    v1s_t get() const { return this->value; }
+public: /* vetters */
+    v1s_t vet() const { return this->value >= 0; }
+public: /* setters */
+    v1s_t set(v1s_t value)
+    {
+        if (std::abs(value) >= std::abs(this->value))
+        { this->value = value; }
+        return this->value;
+    }
+public: /* consdef */
+    constexpr static v1s_t WEAK_HIDE = -0x01;
+    constexpr static v1s_t WEAK_SHOW = +0x01;
+    constexpr static v1s_t SOFT_HIDE = -0x10;
+    constexpr static v1s_t SOFT_SHOW = +0x10;
+    constexpr static v1s_t FIRM_HIDE = -0xf0;
+    constexpr static v1s_t FIRM_SHOW = +0xf0;
+    constexpr static v1s_t HARD_HIDE = -0xff;
+    constexpr static v1s_t HARD_SHOW = +0xff;
+private: /* datadef */
+    v1s_t value = 0; /* (>=0)show or (<0)hide */
+} visual_t; /* any visible entity */
+
 typedef struct rlayer_t {
-    index_t layer = 0;
+    index_t layer = 1;
 } rlayer_t; /* relative layer */
 typedef struct glayer_t {
-    index_t layer = 0;
+    index_t layer = 1;
 } glayer_t; /* global layer */
-typedef struct visual_t {
-    v1b_t valid = _TRUTH;
-    v1s_t force = 0; /* (==0)=ignore,(<0)=force hide (>0)force show */
-} visual_t; /* any visible entity */
 typedef struct vrange_t {
     v1s_t range = 2;
 } vrange_t; /* how much do we see around it ? */
