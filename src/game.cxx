@@ -17,61 +17,20 @@ _NAMESPACE_ENTER
 
 /** datadef **/
 
-struct somi_t somi = {
-    .entity= entt::null,
-    /* visual */
-    .visual= _NULL,
-    /* family */
-    .family= _NULL
-};
-struct hero_t hero = {
-    .entity = entt::null,
-    /* logic */
-    .alive = _NULL,
-    .actor = _NULL,
-    .mover = _NULL,
-    /* sizes */
-    .asize = _NULL,
-    .gsize = _NULL,
-    .tsize = _NULL,
-    /* coord */
-    .apos2 = _NULL,
-    .zpos1 = _NULL,
-    .gpos3 = _NULL,
-    .tpos3 = _NULL,
-    .pivot = _NULL,
-    /* geometry */
-    .direc = _NULL,
-    /* visual */
-    .visual= _NULL,
-    /* family */
-    .family= _NULL,
-};
-struct pick_t pick = {
-    .entity = entt::null,
-    /* visual */
-    .visual= _NULL,
-    /* coord */
-    .apos2 = _NULL,
-    .gpos3 = _NULL,
-    .tpos3 = _NULL,
-    /* sizes */
-    .asize = _NULL,
-    /* family */
-    .family= _NULL,
-};
+entity_t tgrid[TCELL_CFULL];
 
-ent_t tgrid[TCELL_CFULL];
+/*** signal ***/
 
-_SIGNALDEF(hero_rise)
-_SIGNALDEF(hero_died)
-
-_SIGNALDEF(pick_step)
+t_signal_t<void(void)> game_init_top_signal;
+t_signal_t<void(void)> game_init_bot_signal;
+t_signal_t<void(void)> game_quit_top_signal;
+t_signal_t<void(void)> game_quit_bot_signal;
 
 /** actions **/
 
 void game_init()
 {
+    game_init_top_signal.holder.publish();
     /* entity component system */
     if constexpr (_TRUTH)
     { /* alive component */
@@ -79,11 +38,6 @@ void game_init()
         .with<com_alive_t>().on_update<[](ecos_t&ecos, ent_t ent){
             auto&alive = ecos.get<com_alive_t>(ent);
             alive.timep = timer.now_mil;
-            if (ent == hero.entity)
-            {
-                if (alive.valid) { hero_rise_sigholder.publish(alive); }
-                else { hero_died_sigholder.publish(alive); }
-            }
         }>().on_construct<[](ecos_t&ecos, ent_t ent){
         }>().on_destroy<[](ecos_t&ecos, ent_t ent){
         }>();
@@ -103,7 +57,13 @@ void game_init()
         entt::sigh_helper{ ecos }
         .with<com_mover_t>().on_update<[](ecos_t&ecos, ent_t ent){
             auto&mover = ecos.get<com_mover_t>(ent);
-            auto apos2 = ecos.get<com_apos2_t>(ent);
+            auto&apos2 = ecos.get<com_apos2_t>(ent);
+            apos2.x += mover.move.x * TCELL_ASIZE_X;
+            apos2.y += mover.move.y * TCELL_ASIZE_Y;
+            ecos.replace<com_apos2_t>(ent, apos2.x, apos2.y);
+            mover.move.x = 0;
+            mover.move.y = 0;
+#if _FALSE
             auto zpos1 = ecos.get<com_zpos1_t>(ent);
             auto direc = ecos.get<com_direc_t>(ent);
             auto actor = ecos.get<com_actor_t>(ent);
@@ -119,68 +79,64 @@ void game_init()
             else
             {
             }
-            mover.move = apos2_t{ 0, 0 };
+#endif
         }>().on_construct<[](ecos_t&ecos, ent_t ent){
         }>().on_destroy<[](ecos_t&ecos, ent_t ent){
         }>();
     } /* mover component */
     if constexpr (_TRUTH)
     { /* the game entity */
-        somi.entity= ecos.create();
+        auto entity_g = ecos.ctx()
+            .emplace_as<entity_t>(
+                "game_entity"_hstr, ecos.create()
+            );
         /* family */
-        somi.family=&ecos.emplace<com_family_t>(somi.entity);
+        ecos.emplace<com_family_t>(entity_g);
     }
     if constexpr (_TRUTH)
     { /* hero entity */
-        hero.entity = ecos.create();
+        auto hero_entity = ecos.ctx()
+            .emplace_as<ent_t>(
+                "hero_entity"_hstr, ecos.create()
+            );
         /* logic */
-        hero.alive =&ecos.emplace<com_alive_t>(hero.entity, alive_t{
+        ecos.emplace<com_alive_t>(hero_entity, alive_t{
             .valid = _TRUTH,
             .timep = timer.now_mil,
         });
-        hero.actor =&ecos.emplace<com_actor_t>(hero.entity, actor_t{
+        ecos.emplace<com_actor_t>(hero_entity, actor_t{
             .count = 0,
             .timep = timer.now_mil,
         });
-        hero.mover =&ecos.emplace<com_mover_t>(hero.entity, mover_t{
+        ecos.emplace<com_mover_t>(hero_entity, mover_t{
             .fall = _TRUTH,
-            .move = apos2_t{
-                .x = 0,
-                .y = 0,
-            },
+            .move = apos2_t{ 0, 0 },
         });
         /* sizes */
-        hero.asize =&ecos.emplace<com_asize_t>(hero.entity, asize_t{
+        ecos.emplace<com_asize_t>(hero_entity, asize_t{
             TCELL_ASIZE_X, TCELL_ASIZE_Y
         });
-        hero.gsize = ecos.try_get<com_gsize_t>(hero.entity);
-        hero.tsize = ecos.try_get<com_tsize_t>(hero.entity);
         /* coord */
-        hero.apos2 =&ecos.emplace<com_apos2_t>(hero.entity);
-        hero.zpos1 =&ecos.emplace<com_zpos1_t>(hero.entity);
-        hero.gpos3 = ecos.try_get<com_gpos3_t>(hero.entity);
-        hero.tpos3 = ecos.try_get<com_tpos3_t>(hero.entity);
-        hero.pivot =&ecos.emplace<com_pivot_t>(hero.entity, pivot_t{
+        ecos.emplace<com_apos2_t>(hero_entity);
+        ecos.emplace<com_zpos1_t>(hero_entity);
+        ecos.emplace<com_pivot_t>(hero_entity, pivot_t{
             .x = PIVOT_MID,
             .y = PIVOT_MID,
         });
         /* geometry */
-        hero.direc =&ecos.emplace<com_direc_t>(hero.entity, direc_t{
-            .x = +0,
-            .y = -1
-        });
+        ecos.emplace<com_direc_t>(hero_entity, +0, -1);
         /* visual */
-        hero.visual=&ecos.emplace<com_visual_t>(hero.entity, _TRUTH);
-        ecos.emplace<com_rlayer_t>(hero.entity, 1);
-        ecos.emplace<com_color_t>(hero.entity, 0xff);
-        ecos.emplace<com_imreg_t>(hero.entity, com_imreg_t{
+        ecos.emplace<com_visual_t>(hero_entity, _TRUTH);
+        ecos.emplace<com_rlayer_t>(hero_entity, 1);
+        ecos.emplace<com_color_t>(hero_entity, 0xff);
+        ecos.emplace<com_imreg_t>(hero_entity, com_imreg_t{
             .index = _IMORI_GAME_HERO,
             .rsize = rsize_t{
                 .x = RSIZE_MAX/4,
                 .y = RSIZE_MAX,
             },
         });
-        ecos.emplace<com_faces_t>(hero.entity, com_faces_t{
+        ecos.emplace<com_faces_t>(hero_entity, com_faces_t{
             .ilist = {
                 imreg_t{
                     .index = _IMORI_GAME_HERO,
@@ -228,79 +184,97 @@ void game_init()
                 },
             },
         });
+        /* signal */
+        ecos.emplace<com_update_t<com_gpos3_t>>(hero_entity)
+            .binder.connect<[](ecos_t&ecos, ent_t ent) {
+                if (get_key_mode() == _KEY_MODE_VIEW) { return; }
+                auto view_entity = ecos.ctx()
+                    .get<ent_t>("view_entity"_hstr);
+                auto&gpos3 = ecos.get<com_gpos3_t>(ent);
+                ecos.replace<com_apos2_t>(view_entity, apos2_t{
+                    gpos3.x,
+                    gpos3.y,
+                });
+                ecos.replace<com_zpos1_t>(view_entity, zpos1_t{
+                    gpos3.z,
+                });
+            }>();
         /* family */
-        hero.family=&ecos.emplace<com_family_t>(hero.entity, family_t{
-            .ancestor = somi.entity,
-        });
+        ecos.emplace<com_family_t>(hero_entity,
+            ecos.ctx().get<ent_t>("game_entity"_hstr)
+        );
         if constexpr (_TRUTH)
         { /* pick entity */
-            pick.entity= ecos.create();
+            entity_t pick_entity = ecos.ctx()
+                .emplace_as<entity_t>("pick_entity"_hstr, ecos.create());
+            /* logic */
+            ecos.emplace<com_mover_t>(pick_entity);
             /* coord */
-            pick.apos2 =&ecos.emplace<com_apos2_t>(pick.entity, apos2_t{
-                .x = 0,
-                .y = 0,
-            });
-            pick.gpos3 = ecos.try_get<com_gpos3_t>(pick.entity);
-            pick.tpos3 = ecos.try_get<com_tpos3_t>(pick.entity);
-            pick.asize =&ecos.emplace<com_asize_t>(pick.entity, asize_t{
-                    .x = TCELL_ASIZE_X,
-                    .y = TCELL_ASIZE_Y,
+            ecos.emplace<com_apos2_t>(pick_entity);
+            /* sizes */
+            ecos.emplace<com_asize_t>(pick_entity, asize_t{
+                .x = TCELL_ASIZE_X,
+                .y = TCELL_ASIZE_Y,
             });
             /* visual */
-            pick.visual=&ecos.emplace<com_visual_t>(pick.entity, _FALSE);
-            ecos.emplace<com_rlayer_t>(pick.entity, 3);
-            ecos.emplace<com_color_t>(pick.entity, 0xff);
-            ecos.emplace<com_imreg_t>(pick.entity, imreg_t{
+            ecos.emplace<com_visual_t>(pick_entity, _FALSE);
+            ecos.emplace<com_rlayer_t>(pick_entity, 3);
+            ecos.emplace<com_color_t>(pick_entity, 0xff);
+            ecos.emplace<com_imreg_t>(pick_entity, imreg_t{
                 .index = _IMORI_GAME_PICK,
                 .rsize = {
                     .x = RSIZE_MAX,
                     .y = RSIZE_MAX,
                 },
             });
-            key_mode_set_sigbinder.connect<[](key_mode_e mode){
-                ecos.replace<com_apos2_t>(pick.entity, apos2_t{ 0, 0 });
-                pick_step_sigholder.publish();
-                ecos.replace<com_visual_t>(pick.entity, mode == _KEY_MODE_PICK);
-            }>();
+            /* signal */
+            struct listener_t {
+                void on_key_mode(key_mode_e mode)
+                {
+                    ecos.replace<com_apos2_t>(entity, apos2_t{ 0, 0 });
+                    ecos.replace<com_visual_t>(entity, mode == _KEY_MODE_PICK);
+                }
+                entity_t entity;
+            } static listener{ pick_entity };
+            key_mode_set_signal.binder.connect<&listener_t::on_key_mode>(listener);
+            ecos.emplace<com_update_t<com_tpos3_t>>(pick_entity);
             /* family */
-            pick.family=&ecos.emplace<com_family_t>(pick.entity, family_t{
-                .ancestor = hero.entity,
-            });
+            ecos.emplace<com_family_t>(pick_entity, hero_entity);
         } /* pick */
         if constexpr (_TRUTH)
-        { /* helpgrid */
-            if (ecos.valid(helpgrid.entity))
-            {
-                if (!vet_ancestor(helpgrid.entity, hero.entity))
-                {
-                    set_ancestor(helpgrid.entity, hero.entity);
-                }
-            }
-        } /* helpgrid */
-        if constexpr (_TRUTH)
-        { /* signals */
+        { /* signal */
             struct listener_t {
-                inline void on_update(update_event_t&update)
+                void update(update_event_t&update)
                 {
-                    if (!hero.alive->valid && ((timer.now_mil - hero.alive->timep) > 3'000))
+                    auto&alive = ecos.get<com_alive_t>(hero_entity);
+                    if (!alive.valid && ((timer.now_mil - alive.timep) > 3'000))
                     {
-                        hero.alive->valid = _TRUTH;
-                        ecos.patch<com_alive_t>(hero.entity);
+                        alive.valid = _TRUTH;
+                        ecos.patch<com_alive_t>(hero_entity);
                     }
                 }
-            } static listener{};
-            hero_rise_sigbinder.connect<[](const alive_t&alive){
-                ecos.replace<com_apos2_t>(hero.entity, apos2_t{ 0, 0 });
-                key_mode_set(_KEY_MODE_MAIN);
-                timer.dispatcher.sink<update_event_t>()
-                    .disconnect<&listener_t::on_update>(listener);
-            }>();
-            hero_died_sigbinder.connect<[](const alive_t&alive){
-                key_mode_set(_KEY_MODE_DEAD);
-                timer.dispatcher.sink<update_event_t>()
-                    .connect<&listener_t::on_update>(listener);
-            }>();
-        } /* signals */
+                void update_alive(ecos_t&ecos, ent_t ent)
+                {
+                    auto&alive = ecos.get<com_alive_t>(ent);
+                    if (alive.valid)
+                    {
+                        ecos.replace<com_apos2_t>(hero_entity);
+                        key_mode_set(_KEY_MODE_MAIN);
+                        timer.dispatcher.sink<update_event_t>()
+                            .disconnect<&listener_t::update>(*this);
+                    }
+                    else
+                    {
+                        key_mode_set(_KEY_MODE_DEAD);
+                        timer.dispatcher.sink<update_event_t>()
+                            .connect<&listener_t::update>(*this);
+                    }
+                }
+                entity_t hero_entity;
+            } static listener{ hero_entity };
+            ecos.emplace<com_update_t<com_alive_t>>(hero_entity)
+                .binder.connect<&listener_t::update_alive>(listener);
+        } /* signal */
         /*
         static auto animator = animator_t(hero.entity);
         animator.insert<poses_t>(0, 10000, 32,&poses_t::y);
@@ -356,6 +330,12 @@ void game_init()
             }
         }
     } /* build */
+    game_init_bot_signal.holder.publish();
+}
+void game_quit()
+{
+    game_quit_top_signal.holder.publish();
+    game_quit_bot_signal.holder.publish();
 }
 
 /** getters **/
@@ -419,9 +399,9 @@ ent_t set_tcell_into_tpos3(tpos3_t tpos3, tcell_t tcell)
             },
         });
         /* family */
-        ecos.emplace<com_family_t>(entity, family_t{
-            .ancestor = somi.entity,
-        });
+        ecos.emplace<com_family_t>(entity,
+            ecos.ctx().get<ent_t>("game_entity"_hstr)
+        );
         /* tilegrid */
         ecos.emplace<com_tcell_t>(entity, tcell);
     }

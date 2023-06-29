@@ -1,7 +1,7 @@
 # basic
 
 NAME:=somigame
-VNUM:=0xa0a2a7
+VNUM:=0xa0a2a8
 TYPE:=RUN
 CONF:=WORK
 

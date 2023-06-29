@@ -83,8 +83,12 @@ typedef struct glayer_t {
     index_t layer = 0;
 } glayer_t; /* global layer */
 typedef struct visual_t {
-    v1bit_t valid = _TRUTH;
+    v1b_t valid = _TRUTH;
+    v1s_t force = 0; /* (==0)=ignore,(<0)=force hide (>0)force show */
 } visual_t; /* any visible entity */
+typedef struct vrange_t {
+    v1s_t range = 2;
+} vrange_t; /* how much do we see around it ? */
 
 typedef struct ratio_t {
     v1s08_t x = VIEW_RATIO_X, y = VIEW_RATIO_Y;
@@ -117,51 +121,11 @@ typedef struct lgrid_t {
     }; /* lines sizes in both axes */
 } lgrid_t; /* line grid */
 
-/** datadef **/
-
-struct view_t {
-    entity_t entity;
-    /* sizes */
-    asize_t *asize;
-    gsize_t *gsize;
-    tsize_t *tsize;
-    ratio_t *ratio;
-    /* coord */
-    apos2_t *apos2;
-    zpos1_t *zpos1;
-    gpos3_t *gpos3;
-    tpos3_t *tpos3;
-    /* geometry */
-    direc_t *direc;
-    grect_t *grect;
-    trect_t *trect;
-    /* visual */
-    visual_t*visual;
-    /* family */
-    family_t*family;
-} extern view; /* the camera, point of view */
-
-struct helpgrid_t {
-    entity_t entity;
-    /* sizes */
-    asize_t *asize;
-    gsize_t *gsize;
-    tsize_t *tsize;
-    /* coord */
-    gpos3_t *gpos3;
-    tpos3_t *tpos3;
-    /* visual */
-    visual_t*visual;
-    lgrid_t *lgrid;
-    /* family */
-    family_t*family;
-} extern helpgrid; /* the grid around the player */
-
 /** actions **/
 
 extern void gfix_init();
-
-extern void gfix_loop();
+extern void gfix_quit();
+extern void gfix_work();
 
 extern void load_imori_from_fpath_into_value(const std::string&fpath, imori_t&imori);
 extern void load_imori_from_fpath_into_index(const std::string&fpath, index_t index);

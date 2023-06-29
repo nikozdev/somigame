@@ -395,6 +395,10 @@ bool_t init()
     owner = pager_t::global;
     return _TRUTH;
 }
+bool_t quit()
+{
+    return _TRUTH;
+}
 
 _NAMESPACE_LEAVE_MEMO
 

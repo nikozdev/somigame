@@ -605,6 +605,7 @@ extern owner_t*owner;
 /** actions **/
 
 extern bool_t init();
+extern bool_t quit();
 
 _NAMESPACE_LEAVE_MEMO
 

@@ -17,10 +17,12 @@ _NAMESPACE_ENTER
 
 /** datadef **/
 
-_SIGNALDEF(key_mode_set)
-_SIGNALDEF(key_line_apply)
-_SIGNALDEF(key_line_insert)
-_SIGNALDEF(key_down)
+t_signal_t<void(key_mode_e)>key_mode_set_signal;
+t_signal_t<void(key_path_t)>key_line_apply_signal;
+t_signal_t<void(key_path_t)>key_line_insert_signal;
+t_signal_t<void(key_code_t)>key_down_signal;
+
+extern t_signal_t<void(void)>game_init_bot_signal;
 
 std::string key_line = "";
 int key_narg_sign = +1;
@@ -55,7 +57,7 @@ bool key_mode_set(key_mode_e mode)
     {
         key_mode = mode;
         key_list =&key_list_table[mode];
-        key_mode_set_sigholder.publish(mode);
+        key_mode_set_signal.holder.publish(mode);
         return _TRUTH;
     }
     else { return _FALSE; }
@@ -114,7 +116,7 @@ static void key_line_apply()
         }
         else
         {
-            key_line_apply_sigholder.publish(&key_line[0]);
+            key_line_apply_signal.holder.publish(&key_line[0]);
             key_bind_used->func(key_narg * key_narg_sign);
             key_line += "[done]";
         }
@@ -140,7 +142,7 @@ static void key_line_insert(key_code_t code)
         bind =(*key_list)[code];
     }
     key_line += code;
-    key_line_insert_sigholder.publish(&key_line[0]);
+    key_line_insert_signal.holder.publish(&key_line[0]);
     if (bind)
     {
         key_bind_used = bind;
@@ -163,7 +165,7 @@ void iput_init()
 {
     ::glutSetKeyRepeat(GLUT_KEY_REPEAT_ON);
     ::glutKeyboardFunc([](unsigned char key, int _mx, int _my) {
-        key_down_sigholder.publish(key);
+        key_down_signal.holder.publish(key);
         if (std::isdigit(key))
         { key_narg = key_narg * 10 + (key - '0'); }
         else if (key == '-')
@@ -205,20 +207,86 @@ void iput_init()
         }
         if constexpr (_TRUTH)
         { /** hero **/
-            key_bind_set(_KEY_MODE_HERO, "a", [](int narg){});
-            key_bind_set(_KEY_MODE_HERO, "d", [](int narg){});
-            key_bind_set(_KEY_MODE_HERO, "s", [](int narg){});
-            key_bind_set(_KEY_MODE_HERO, "w", [](int narg){});
+            struct listener_t {
+                auto&get_mover()
+                { return ecos.get<com_mover_t>(this->hero_entity); }
+                void on_game_init()
+                { this->hero_entity = ecos.ctx().get<ent_t>("hero_entity"_hstr); }
+                void on_key_a(int narg)
+                {
+                    auto&mover = this->get_mover();
+                    mover.move.x -= 1*(get_num_sign(narg)+narg);
+                    ecos.replace<com_mover_t>(this->hero_entity, mover);
+                }
+                void on_key_d(int narg)
+                {
+                    auto&mover = this->get_mover();
+                    mover.move.x += 1*(get_num_sign(narg)+narg);
+                    ecos.replace<com_mover_t>(this->hero_entity, mover);
+                }
+                void on_key_s(int narg)
+                {
+                    auto&mover = this->get_mover();
+                    mover.move.y -= 1*(get_num_sign(narg)+narg);
+                    ecos.replace<com_mover_t>(this->hero_entity, mover);
+                }
+                void on_key_w(int narg)
+                {
+                    auto&mover = this->get_mover();
+                    mover.move.y += 1*(get_num_sign(narg)+narg);
+                    ecos.replace<com_mover_t>(this->hero_entity, mover);
+                }
+                entity_t hero_entity;
+            } static listener{};
+            game_init_bot_signal.binder.connect<&listener_t::on_game_init>(listener);
+            key_bind_set(_KEY_MODE_HERO, "a", [](int narg){ listener.on_key_a(narg); });
+            key_bind_set(_KEY_MODE_HERO, "d", [](int narg){ listener.on_key_d(narg); });
+            key_bind_set(_KEY_MODE_HERO, "s", [](int narg){ listener.on_key_s(narg); });
+            key_bind_set(_KEY_MODE_HERO, "w", [](int narg){ listener.on_key_w(narg); });
         } /* pick */
         if constexpr (_TRUTH)
         { /** pick **/
-            key_bind_set(_KEY_MODE_PICK, "a", [](int narg){});
-            key_bind_set(_KEY_MODE_PICK, "d", [](int narg){});
-            key_bind_set(_KEY_MODE_PICK, "s", [](int narg){});
-            key_bind_set(_KEY_MODE_PICK, "w", [](int narg){});
-            key_bind_set(_KEY_MODE_PICK, "g", [](int narg){});
+            struct listener_t {
+                auto&get_mover()
+                { return ecos.get<com_mover_t>(this->pick_entity); }
+                void on_game_init()
+                { this->pick_entity = ecos.ctx().get<ent_t>("pick_entity"_hstr); }
+                void on_key_a(int narg)
+                {
+                    auto&mover = this->get_mover();
+                    mover.move.x -= 1*(get_num_sign(narg)+narg);
+                    ecos.replace<com_mover_t>(this->pick_entity, mover);
+                }
+                void on_key_d(int narg)
+                {
+                    auto&mover = this->get_mover();
+                    mover.move.x += 1*(get_num_sign(narg)+narg);
+                    ecos.replace<com_mover_t>(this->pick_entity, mover);
+                }
+                void on_key_s(int narg)
+                {
+                    auto&mover = this->get_mover();
+                    mover.move.y -= 1*(get_num_sign(narg)+narg);
+                    ecos.replace<com_mover_t>(this->pick_entity, mover);
+                }
+                void on_key_w(int narg)
+                {
+                    auto&mover = this->get_mover();
+                    mover.move.y += 1*(get_num_sign(narg)+narg);
+                    ecos.replace<com_mover_t>(this->pick_entity, mover);
+                }
+                entity_t pick_entity;
+            } static listener{};
+            game_init_bot_signal.binder.connect<&listener_t::on_game_init>(listener);
+            key_bind_set(_KEY_MODE_PICK, "a", [](int narg){ listener.on_key_a(narg); });
+            key_bind_set(_KEY_MODE_PICK, "d", [](int narg){ listener.on_key_d(narg); });
+            key_bind_set(_KEY_MODE_PICK, "s", [](int narg){ listener.on_key_s(narg); });
+            key_bind_set(_KEY_MODE_PICK, "w", [](int narg){ listener.on_key_w(narg); });
         } /* pick */
     } /* keybinds */
+}
+void iput_quit()
+{
 }
 
 _NAMESPACE_LEAVE

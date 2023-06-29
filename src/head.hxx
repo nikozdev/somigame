@@ -168,18 +168,6 @@
 #define _PCALL( exec, actn, ... ) \
     ({ exec; _EFNOT( _ecode == _ZERO, ({ actn; _ecode = _ZERO; }), __VA_ARGS__ ); })
 
-/** meta **/
-
-#define _SIGNALDEC(name, ...) \
-    using name##_sigholder_t = t_sigholder_t<__VA_ARGS__>; \
-    using name##_sigbinder_t = t_sigbinder_t<name##_sigholder_t>; \
-    extern name##_sigbinder_t name##_sigbinder; \
-    /* _SIGNALDEC */
-#define _SIGNALDEF(name) \
-    name##_sigholder_t name##_sigholder; \
-    name##_sigbinder_t name##_sigbinder{name##_sigholder};
-    /* _SIGNALDEF */
-
 /* content */
 
 _NAMESPACE_ENTER

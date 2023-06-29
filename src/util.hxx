@@ -297,15 +297,15 @@ typedef struct timer_t {
 
 /*** struct ***/
 
-template<typename t_com_t>
+template<typename t_func_t>
 struct t_signal_t
 {
 public: /* typedef */
-    using sigholder_t = t_sigholder_t<void(t_com_t)>;
+    using sigholder_t = t_sigholder_t<t_func_t>;
     using sigbinder_t = t_sigbinder_t<sigholder_t>;
 public: /* datadef */
-    sigholder_t sigholder;
-    sigbinder_t sigbinder;
+    sigholder_t holder;
+    sigbinder_t binder{holder};
 }; /* templated signal */
 
 typedef struct strbuf_t {
@@ -428,7 +428,7 @@ extern timer_t timer;
 /** actions **/
 
 extern void util_init();
-extern void util_loop();
+extern void util_quit();
 
 template<typename func_t>
 void call_on_sec(func_t func, count_t sec = 1)

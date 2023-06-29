@@ -16,43 +16,16 @@ _NAMESPACE_ENTER
 
 /** datadef **/
 
-struct view_t view = {
-    .entity= entt::null,
-    /* sizes */
-    .asize = _NULL,
-    .gsize = _NULL,
-    .tsize = _NULL,
-    .ratio = _NULL,
-    /* coord */
-    .apos2 = _NULL,
-    .zpos1 = _NULL,
-    .gpos3 = _NULL,
-    .tpos3 = _NULL,
-    /* geometry */
-    .direc = _NULL,
-    .grect = _NULL,
-    .trect = _NULL,
-    /* visual */
-    .visual= _NULL,
-    /* family */
-    .family= _NULL,
-};
+/*** signal ***/
 
-struct helpgrid_t helpgrid = {
-    .entity= entt::null,
-    /* sizes */
-    .asize = _NULL,
-    .gsize = _NULL,
-    .tsize = _NULL,
-    /* coord */
-    .gpos3 = _NULL,
-    .tpos3 = _NULL,
-    /* visual */
-    .visual= _NULL,
-    .lgrid = _NULL,
-    /* family */
-    .family= _NULL,
-};
+t_signal_t<void(void)> gfix_init_top_signal;
+t_signal_t<void(void)> gfix_init_bot_signal;
+t_signal_t<void(void)> gfix_work_top_signal;
+t_signal_t<void(void)> gfix_work_bot_signal;
+t_signal_t<void(void)> gfix_quit_top_signal;
+t_signal_t<void(void)> gfix_quit_bot_signal;
+
+extern t_signal_t<void(void)> game_init_bot_signal;
 
 /*** system ***/
 
@@ -87,6 +60,7 @@ constexpr const asize_t IMORI_FONT_ASIZE{ 8, 8 };
 
 void gfix_init()
 {
+    gfix_init_top_signal.holder.publish();
     if constexpr (_TRUTH)
     { /* glut setup */
         ::glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
@@ -94,7 +68,6 @@ void gfix_init()
         ::glutInitWindowSize(window.asize.x, window.asize.y);
         ::glutCreateWindow(_NAME_STR);
         /* callbacks */
-        ::glutDisplayFunc(::glutSwapBuffers);
         ::glutReshapeFunc([](int sizex, int sizey) {
             auto winratx = window.ratio.x;
             auto winraty = window.ratio.y;
@@ -121,26 +94,6 @@ void gfix_init()
             window.asize.x = sizex;
             window.asize.y = sizey;
             ::glViewport(window.apos2.x, window.apos2.y, window.asize.x, window.asize.y);
-            /* camera */
-            view.asize->x = VIEW_ASIZE_X;
-            view.asize->y = VIEW_ASIZE_Y;
-            ecos.patch<com_asize_t>(view.entity);
-            view.grect->x.l = -view.asize->x / 2 + view.apos2->x;
-            view.grect->x.r = +view.asize->x / 2 + view.apos2->x;
-            view.grect->y.b = -view.asize->y / 2 + view.apos2->y;
-            view.grect->y.t = +view.asize->y / 2 + view.apos2->y;
-            ecos.patch<com_grect_t>(view.entity);
-            view.trect->x.l = view.grect->x.l / TCELL_ASIZE_X;
-            view.trect->x.r = view.grect->x.r / TCELL_ASIZE_X;
-            view.trect->y.b = view.grect->y.b / TCELL_ASIZE_Y;
-            view.trect->y.t = view.grect->y.t / TCELL_ASIZE_Y;
-            ecos.patch<com_trect_t>(view.entity);
-            ::glMatrixMode(GL_PROJECTION);
-            ::glLoadIdentity();
-            ::gluOrtho2D(
-                view.grect->x.l, view.grect->x.r,
-                view.grect->y.b, view.grect->y.t
-            );
         });
     } /* glut setup */
     if constexpr (_TRUTH)
@@ -211,29 +164,21 @@ void gfix_init()
     } /* imreg */
     if constexpr (_TRUTH)
     { /* view */
-        view.entity= ecos.create();
+        auto view_entity= ecos.ctx()
+            .emplace_as<entity_t>("view_entity"_hstr, ecos.create());
         /* sizes */
-        view.asize =&ecos.emplace<com_asize_t>(view.entity, asize_t{
+        ecos.emplace<com_asize_t>(view_entity, asize_t{
             .x = VIEW_ASIZE_X,
             .y = VIEW_ASIZE_Y,
         });
-        view.gsize = ecos.try_get<com_gsize_t>(view.entity);
-        view.tsize = ecos.try_get<com_tsize_t>(view.entity);
-        view.ratio =&ecos.emplace<com_ratio_t>(view.entity);
+        ecos.emplace<com_ratio_t>(view_entity);
         /* coord */
-        view.apos2 =&ecos.emplace<com_apos2_t>(view.entity);
-        view.zpos1 =&ecos.emplace<com_zpos1_t>(view.entity);
-        view.gpos3 = ecos.try_get<com_gpos3_t>(view.entity);
-        view.tpos3 = ecos.try_get<com_tpos3_t>(view.entity);
+        ecos.emplace<com_apos2_t>(view_entity);
+        ecos.emplace<com_zpos1_t>(view_entity);
         /* geometry */
-        view.direc =&ecos.emplace<com_direc_t>(view.entity, direc_t{
-            .x = -0,
-            .y = +1,
-        });
-        view.grect = ecos.try_get<com_grect_t>(view.entity);
-        view.trect = ecos.try_get<com_trect_t>(view.entity);
+        ecos.emplace<com_direc_t>(view_entity, -0, +1);
         /* family */
-        view.family=&ecos.emplace<com_family_t>(view.entity);
+        ecos.emplace<com_family_t>(view_entity);
         if constexpr (_TRUTH)
         { /* gui-mm */
             auto entity_q= ecos.create();
@@ -246,9 +191,7 @@ void gfix_init()
             ecos.emplace<com_visual_t>(entity_q, _TRUTH);
             ecos.emplace<com_rlayer_t>(entity_q, 1);
             /* family */
-            ecos.emplace<com_family_t>(entity_q, family_t{
-                .ancestor = view.entity,
-            });
+            ecos.emplace<com_family_t>(entity_q, view_entity);
             if constexpr(_TRUTH)
             { /* died */
                 auto entity_d = ecos.create();
@@ -273,21 +216,26 @@ void gfix_init()
                     .mdata = "YouDied",
                 });
                 /* family */
-                ecos.emplace<com_family_t>(entity_d, family_t{
-                    .ancestor = entity_q,
-                });
+                ecos.emplace<com_family_t>(entity_d, entity_q);
                 /* signal */
                 struct listener_t {
-                    inline void update(const alive_t&alive)
+                    void on_init_game()
                     {
+                        ecos.get<com_update_t<com_alive_t>>(
+                            ecos.ctx().get<ent_t>("hero_entity"_hstr)
+                        ).binder.connect<&listener_t::on_update_alive>(*this);
+                    }
+                    void on_update_alive(ecos_t&ecos, ent_t ent)
+                    {
+                        const auto&alive = ecos.get<com_alive_t>(ent);
                         this->visual->valid = !alive.valid;
                         this->visual =&ecos.patch<com_visual_t>(this->entity);
                     }
                     entity_t entity;
                     visual_t*visual;
                 } static listener{entity_d,&visual};
-                hero_rise_sigbinder.connect<&listener_t::update>(listener);
-                hero_died_sigbinder.connect<&listener_t::update>(listener);
+                game_init_bot_signal
+                    .binder.connect<&listener_t::on_init_game>(listener);
             } /* died */
         } /* gui-mm */
         if constexpr (_TRUTH)
@@ -313,9 +261,7 @@ void gfix_init()
             ecos.emplace<com_color_t>(entity_q, 0x40);
             ecos.emplace<com_imreg_t>(entity_q, _IMORI_META_NONE);
             /* family */
-            ecos.emplace<com_family_t>(entity_q, family_t{
-                .ancestor = view.entity
-            });
+            ecos.emplace<com_family_t>(entity_q, view_entity);
             if constexpr (_TRUTH)
             { /* label-mb */
                 auto entity_l = ecos.create();
@@ -344,26 +290,38 @@ void gfix_init()
                 });
                 if constexpr(_TRUTH)
                 { /* signal */
-                    struct listener_t { void on_update(update_event_t& event) {
-                        memset(strbuf.mdata, '\0', strbuf.msize);
-                        std::snprintf(
-                            strbuf.mdata, strbuf.msize,
-                            "mode=%s;acts=%08d;"
-                            "%c"
-                            "%s(%+d)x(%d)",
-                            get_key_mode_name(), hero.actor->count,
-                            '\n',
-                            &get_key_line()[0], get_key_narg_sign(), get_key_narg()
-                        );
-                    } strbuf_t&strbuf; } static listener{ strbuf };
+                    struct listener_t {
+                        void on_game_init()
+                        {
+                            this->hero_entity = ecos.ctx()
+                                .get<ent_t>("hero_entity"_hstr);
+                        }
+                        void on_update(update_event_t& event) {
+                            memset(strbuf.mdata, '\0', strbuf.msize);
+                            std::snprintf(
+                                strbuf.mdata, strbuf.msize,
+                                "mode=%s;acts=%08d;"
+                                "%c"
+                                "%s(%+d)x(%d)",
+                                get_key_mode_name(),
+                                ecos.get<com_actor_t>(hero_entity).count,
+                                '\n',
+                                &get_key_line()[0],
+                                get_key_narg_sign(),
+                                get_key_narg()
+                            );
+                        }
+                        strbuf_t&strbuf;
+                        entity_t hero_entity;
+                    } static listener{ strbuf };
                     timer.dispatcher
                         .sink<update_event_t>()
                         .connect<&listener_t::on_update>(listener);
+                    game_init_bot_signal
+                        .binder.connect<&listener_t::on_game_init>(listener);
                 } /* signal */
                 /* family */
-                ecos.emplace<com_family_t>(entity_l, family_t{
-                    .ancestor = entity_q,
-                });
+                ecos.emplace<com_family_t>(entity_l, entity_q);
             } /* label-mb */
         } /* gui-mb */
         if constexpr (_TRUTH)
@@ -391,9 +349,7 @@ void gfix_init()
             });
             ecos.emplace<com_imreg_t>(entity_q, _IMORI_META_NONE);
             /* family */
-            ecos.emplace<com_family_t>(entity_q, family_t{
-                .ancestor = view.entity,
-            });
+            ecos.emplace<com_family_t>(entity_q, view_entity);
             if constexpr (_TRUTH)
             { /* label-mt */
                 auto entity_l = ecos.create();
@@ -417,6 +373,9 @@ void gfix_init()
                 /* signal */
                 struct listener_t { void on_update(update_event_t& event) {
                     memset(strbuf.mdata, '\0', strbuf.msize);
+                    auto view_entity = ecos.ctx().get<ent_t>("view_entity"_hstr);
+                    auto view_gpos3 = ecos.get<com_gpos3_t>(view_entity);
+                    auto view_direc = ecos.get<com_direc_t>(view_entity);
                     std::snprintf(
                         strbuf.mdata, strbuf.msize,
                         "now=%03zu.%03zu;fps=%05zu;"
@@ -425,15 +384,13 @@ void gfix_init()
                         "%c",
                         (timer.now_mil / 1000) % 1000, timer.now_mil % 1000, timer.fps_num,
                         '\n',
-                        view.gpos3->x, view.gpos3->y, view.gpos3->z,
-                        view.direc->x, view.direc->y,
+                        view_gpos3.x, view_gpos3.y, view_gpos3.z,
+                        view_direc.x, view_direc.y,
                         '\0'
                     );
                 } strbuf_t&strbuf; } static listener{ strbuf };
                 /* family */
-                ecos.emplace<com_family_t>(entity_l, family_t{
-                    .ancestor = entity_q,
-                });
+                ecos.emplace<com_family_t>(entity_l, entity_q);
             } /* label-mt */
         } /* gui-mt */
         if constexpr (_TRUTH)
@@ -461,9 +418,7 @@ void gfix_init()
                 .y = PIVOT_MID,
             });
             /* family */
-            ecos.emplace<com_family_t>(entity_q, family_t{
-                .ancestor = view.entity,
-            });
+            ecos.emplace<com_family_t>(entity_q, view_entity);
             if constexpr (_TRUTH)
             { /* label-lm */
                 auto entity_l = ecos.create();
@@ -497,9 +452,7 @@ void gfix_init()
                     .mdata = "",
                 });
                 /* family */
-                ecos.emplace<com_family_t>(entity_l, family_t{
-                    .ancestor = entity_q,
-                });
+                ecos.emplace<com_family_t>(entity_l, entity_q);
             } /* label-lm */
         } /* gui-lm */
         if constexpr (_TRUTH)
@@ -522,14 +475,10 @@ void gfix_init()
             /* visual */
             ecos.emplace<com_visual_t>(entity_q, _TRUTH);
             ecos.emplace<com_rlayer_t>(entity_q, 1);
-            ecos.emplace<com_color_t>(entity_q, color_t{
-                .v = 0x40,
-            });
+            ecos.emplace<com_color_t>(entity_q, 0x40);
             ecos.emplace<com_imreg_t>(entity_q, _IMORI_META_NONE);
             /* family */
-            ecos.emplace<com_family_t>(entity_q, family_t{
-                .ancestor = view.entity,
-            });
+            ecos.emplace<com_family_t>(entity_q, view_entity);
             if constexpr (_TRUTH)
             { /* label-rm */
                 auto entity_l = ecos.create();
@@ -569,8 +518,15 @@ void gfix_init()
                 ecos.emplace<com_family_t>(entity_l, entity_q);
                 /* signal */
                 struct listener_t {
-                    inline void update()
+                    void on_game_init()
                     {
+                        this->entity = ecos.ctx().get<ent_t>("pick_entity"_hstr);
+                        ecos.get<com_update_t<com_tpos3_t>>(entity)
+                            .binder.connect<&listener_t::on_update_tpos3>(*this);
+                    }
+                    void on_update_tpos3(ecos_t&ecos, ent_t ent)
+                    {
+                        auto&tpos3 = ecos.get<com_tpos3_t>(ent);
                         std::snprintf(
                             strbuf.mdata, strbuf.msize,
                             "pick\n"
@@ -581,38 +537,50 @@ void gfix_init()
                             "z%+04i\n"
                             "========%c",
                             '\n',
-                            pick.tpos3->x,
-                            pick.tpos3->y,
-                            pick.tpos3->z,
+                            tpos3.x,
+                            tpos3.y,
+                            tpos3.z,
                             '\0'
                         );
                     }
                     strbuf_t&strbuf;
+                    entity_t entity;
                 } static listener{strbuf};
-                pick_step_sigbinder.connect<&listener_t::update>(listener);
+                game_init_bot_signal
+                    .binder.connect<&listener_t::on_game_init>(listener);
             } /* label-rm */
         } /* gui-rm */
-    }
+        /* signal */
+        struct listener_t {
+            void on_grect_update(ecos_t&ecos, ent_t ent)
+            {
+                auto&grect = ecos.get<com_grect_t>(ent);
+                ::glMatrixMode(GL_PROJECTION);
+                ::glLoadIdentity();
+                ::gluOrtho2D(
+                    grect.x.l, grect.x.r,
+                    grect.y.b, grect.y.t
+                );
+            }
+            entity_t entity = entt::null;
+        } static listener;
+        listener.entity = view_entity;
+        ecos.emplace<com_update_t<com_grect_t>>(view_entity)
+            .binder.connect<&listener_t::on_grect_update>(listener);
+    } /* view */
     if constexpr (_TRUTH)
     { /* helpgrid */
-        helpgrid.entity= ecos.create();
+        auto ent = ecos.create();
         /* sizes */
-        helpgrid.asize =&ecos.emplace<com_asize_t>(helpgrid.entity, asize_t{
+        ecos.emplace<com_asize_t>(ent, asize_t{
             .x = TCELL_ASIZE_X * 3,
             .y = TCELL_ASIZE_Y * 3,
         });
-        helpgrid.gsize = ecos.try_get<com_gsize_t>(helpgrid.entity);
-        helpgrid.tsize = ecos.try_get<com_tsize_t>(helpgrid.entity);
-        /* coord */
-        helpgrid.gpos3 = ecos.try_get<com_gpos3_t>(helpgrid.entity);
-        helpgrid.tpos3 = ecos.try_get<com_tpos3_t>(helpgrid.entity);
         /* visual */
-        helpgrid.visual=&ecos.emplace<com_visual_t>(helpgrid.entity, _TRUTH);
-        ecos.emplace<com_rlayer_t>(helpgrid.entity, 1);
-        ecos.emplace<com_color_t>(helpgrid.entity, color_t{
-            .v = 0x20,
-        });
-        helpgrid.lgrid =&ecos.emplace<com_lgrid_t>(helpgrid.entity, lgrid_t{
+        ecos.emplace<com_visual_t>(ent, _TRUTH);
+        ecos.emplace<com_rlayer_t>(ent, 1);
+        ecos.emplace<com_color_t>(ent, 0x20);
+        ecos.emplace<com_lgrid_t>(ent, lgrid_t{
             .cells = {
                 .x = TCELL_ASIZE_X,
                 .y = TCELL_ASIZE_Y,
@@ -627,21 +595,29 @@ void gfix_init()
             },
         });
         /* family */
-        helpgrid.family=&ecos.emplace<com_family_t>(helpgrid.entity, family_t{
-            .ancestor = hero.entity,
-        });
-        if (ecos.valid(hero.entity))
-        {
-            if (!vet_ancestor(helpgrid.entity, hero.entity))
+        ecos.emplace<com_family_t>(ent);
+        /* signal */
+        struct listener_t {
+            void proc_init()
             {
-                set_ancestor(helpgrid.entity, hero.entity);
+                set_ancestor(this->entity,
+                    ecos.ctx().get<ent_t>("hero_entity"_hstr)
+                );
             }
-        }
+            entity_t entity;
+        } static listener{ ent };
+        game_init_bot_signal.binder.connect<&listener_t::proc_init>(listener);
     } /* helpgrid */
+    gfix_init_bot_signal.holder.publish();
 }
-
-void gfix_loop()
+void gfix_quit()
 {
+    gfix_quit_top_signal.holder.publish();
+    gfix_quit_bot_signal.holder.publish();
+}
+void gfix_work()
+{
+    gfix_work_top_signal.holder.publish();
     if constexpr (_TRUTH)
     { /* redraw */
         ::glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -649,6 +625,9 @@ void gfix_loop()
     }
     if constexpr (_TRUTH)
     { /* drawing */
+        /* prepare the view */
+        auto view_entity = ecos.ctx().get<ent_t>("view_entity"_hstr);
+        auto view_grect = ecos.get<com_grect_t>(view_entity);
         /* count all visible components */
         count_t count = 0;
         for (auto&&
@@ -677,25 +656,25 @@ void gfix_loop()
             com_visual_t, com_glayer_t, com_gpos3_t, com_grect_t
             >().each()
         ) {
-            if (visual.valid && ((_FALSE
+            if (visual.valid && visual.force >= 0 && ((_FALSE
             ) || (_TRUTH
-            && ((grect.x.l <= view.grect->x.r) && (grect.y.b <= view.grect->y.t))
-            && ((grect.x.l >= view.grect->x.l) && (grect.y.b >= view.grect->y.b))
+            && ((grect.x.l <= view_grect.x.r) && (grect.y.b <= view_grect.y.t))
+            && ((grect.x.l >= view_grect.x.l) && (grect.y.b >= view_grect.y.b))
             ) || (_TRUTH
-            && ((grect.x.l <= view.grect->x.r) && (grect.y.t <= view.grect->y.t))
-            && ((grect.x.l >= view.grect->x.l) && (grect.y.t >= view.grect->y.b))
+            && ((grect.x.l <= view_grect.x.r) && (grect.y.t <= view_grect.y.t))
+            && ((grect.x.l >= view_grect.x.l) && (grect.y.t >= view_grect.y.b))
             ) || (_TRUTH
-            && ((grect.x.r <= view.grect->x.r) && (grect.y.b <= view.grect->y.t))
-            && ((grect.x.r >= view.grect->x.l) && (grect.y.b >= view.grect->y.b))
+            && ((grect.x.r <= view_grect.x.r) && (grect.y.b <= view_grect.y.t))
+            && ((grect.x.r >= view_grect.x.l) && (grect.y.b >= view_grect.y.b))
             ) || (_TRUTH
-            && ((grect.x.r <= view.grect->x.r) && (grect.y.t <= view.grect->y.t))
-            && ((grect.x.r >= view.grect->x.l) && (grect.y.t >= view.grect->y.b))
+            && ((grect.x.r <= view_grect.x.r) && (grect.y.t <= view_grect.y.t))
+            && ((grect.x.r >= view_grect.x.l) && (grect.y.t >= view_grect.y.b))
             ) || (_TRUTH
-            && ((grect.x.l <= view.grect->x.l) && (grect.x.r >= view.grect->x.r))
-            && ((grect.y.b >= view.grect->y.b) || (grect.y.t >= view.grect->y.t))
+            && ((grect.x.l <= view_grect.x.l) && (grect.x.r >= view_grect.x.r))
+            && ((grect.y.b >= view_grect.y.b) || (grect.y.t >= view_grect.y.t))
             ) || (_TRUTH
-            && ((grect.y.b <= view.grect->y.b) && (grect.y.t >= view.grect->y.t))
-            && ((grect.x.l >= view.grect->x.l) || (grect.x.r <= view.grect->x.r))
+            && ((grect.y.b <= view_grect.y.b) && (grect.y.t >= view_grect.y.t))
+            && ((grect.x.l >= view_grect.x.l) || (grect.x.r <= view_grect.x.r))
             )) && ((grect.x.l != grect.x.r) || (grect.y.b != grect.y.t))) {
                 /*
                 *drawlist.back = drawable_t{
@@ -797,15 +776,9 @@ void gfix_loop()
     } /* TODO: implement batch rendering, decrease draw calls */
     if constexpr (_TRUTH)
     { /* finish the frame */
-        ::glutPostRedisplay();
+        ::glutSwapBuffers();
     }
-    if constexpr (_TRUTH)
-    { /* to-hero adjustment */
-        if (get_key_mode() != _KEY_MODE_VIEW)
-        {
-            ecos.replace<com_gpos3_t>(view.entity, *hero.gpos3);
-        }
-    }
+    gfix_work_bot_signal.holder.publish();
 }
 
 /*** files ***/
@@ -862,11 +835,11 @@ void load_imori_from_value_into_index(const imori_t&imori, index_t index)
 
 void view_turn(const bool_t lside)
 {
-    view.direc =&ecos.replace<com_direc_t>(
-        view.entity,
-        get_vec_turn(*view.direc, lside)
+    auto view_entity = ecos.ctx().get<ent_t>("view_entity"_hstr);
+    auto view_direc = ecos.get<com_direc_t>(view_entity);
+    ecos.replace<com_direc_t>(view_entity,
+        get_vec_turn(view_direc, lside)
     );
-    ecos.patch<com_direc_t>(view.entity);
 }
 
 /** getters **/

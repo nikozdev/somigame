@@ -14,8 +14,9 @@ _NAMESPACE_ENTER
 
 /** actions **/
 
-extern void main_loop();
+extern void main_init();
 extern void main_quit();
+extern void main_work();
 
 extern int main(int, char**);
 

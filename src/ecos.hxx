@@ -143,6 +143,36 @@ using com_strbuf_t = strbuf_t;
 
 using com_clock_t = clock_t;
 
+template<typename t_com_t>
+struct com_update_t
+{
+public: /* typedef */
+    using holder_t = t_sigholder_t<void(ecos_t&, ent_t)>;
+    using binder_t = t_sigbinder_t<holder_t>;
+public: /* codetor */
+    com_update_t() : entity(entt::to_entity(ecos, *this))
+    {
+        ecos.on_update<t_com_t>().template connect
+            <&com_update_t::update>(*this);
+    }
+    ~com_update_t()
+    {
+        ecos.on_update<t_com_t>().template disconnect
+            <&com_update_t::update>(*this);
+    }
+public: /* actions */
+    void update(ecos_t&ecos, ent_t ent)
+    {
+        if (this->entity == ent)
+        { this->holder.publish(ecos, ent); }
+    }
+public: /* datadef */
+    holder_t holder;
+    binder_t binder{holder};
+private:
+    entity_t entity;
+}; /* templated signal */
+
 /**** names ****/
 
 using com_iname_t = iname_t;
@@ -181,6 +211,7 @@ using com_irect_t = irect_t;
 /**** visual ****/
 
 using com_visual_t= visual_t;
+using com_vrange_t= vrange_t;
 
 using com_rlayer_t= rlayer_t;
 using com_glayer_t= glayer_t;

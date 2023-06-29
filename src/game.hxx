@@ -72,62 +72,10 @@ typedef struct block_t {
     bool _;
 } block_t; /* what cannot be passed through */
 
-/** datadef **/
-
-struct somi_t {
-    entity_t entity;
-    /* visual */
-    visual_t*visual;
-    /* family */
-    family_t*family;
-} extern somi; /* the global world entity */
-
-struct hero_t {
-    entity_t entity;
-    /* logic */
-    alive_t *alive;
-    actor_t *actor;
-    mover_t *mover;
-    /* sizes */
-    asize_t *asize;
-    gsize_t *gsize;
-    tsize_t *tsize;
-    /* coord */
-    apos2_t *apos2;
-    zpos1_t *zpos1;
-    gpos3_t *gpos3;
-    tpos3_t *tpos3;
-    pivot_t *pivot;
-    /* geometry */
-    direc_t *direc;
-    /* visual */
-    visual_t*visual;
-    /* family */
-    family_t*family;
-} extern hero; /* nice to meet you */
-
-struct pick_t {
-    entity_t entity;
-    /* visual */
-    visual_t*visual;
-    /* coord */
-    apos2_t *apos2;
-    gpos3_t *gpos3;
-    tpos3_t *tpos3;
-    /* sizes */
-    asize_t *asize;
-    /* family */
-    family_t*family;
-} extern pick; /* tile selector/pointer/picker */
-
-_SIGNALDEC(hero_rise, void(const alive_t))
-_SIGNALDEC(hero_died, void(const alive_t))
-
-_SIGNALDEC(pick_step, void())
-
 /** actions **/
 
 extern void game_init();
+extern void game_quit();
 
 /** getters **/
 

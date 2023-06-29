@@ -170,7 +170,7 @@ void util_init()
             if (auto*apos2_e = ecos.try_get<com_apos2_t>(ent))
             { gpos3_e.x = apos2_e->x; gpos3_e.y = apos2_e->y; }
             if (auto*zpos1_e = ecos.try_get<com_zpos1_t>(ent))
-            { gpos3_e.x = zpos1_e->z; }
+            { gpos3_e.z = zpos1_e->z; }
             if (auto*family_e = ecos.try_get<com_family_t>(ent))
             { /* family */
                 auto ancestor = family_e->ancestor;
@@ -184,6 +184,12 @@ void util_init()
                             gpos3_e.y += gsize_a->y * rpos2_e->y / RPOS2_DIV;
                         } /* relative size */
                     } /* ancestor global size */
+                    if (auto*gpos3_a = ecos.try_get<com_gpos3_t>(ancestor))
+                    { /* ancestor global size */
+                        gpos3_e.x += gpos3_a->x;
+                        gpos3_e.y += gpos3_a->y;
+                        gpos3_e.z += gpos3_a->z;
+                    } /* ancestor global pos3 */
                 } /* ancestor */
                 /* update sizes */
                 ecos.emplace_or_replace<com_gpos3_t>(ent, gpos3_e);
@@ -194,7 +200,6 @@ void util_init()
                 if (ecos.valid(family_e->follower))
                 { /* update followers */
                     auto follower = family_e->follower;
-                    update(ecos, follower);
                     auto*family_f =&ecos.get<com_family_t>(family_e->follower);
                     update_gpos3_tpos3(ecos, follower);
                     /* siblingl */
@@ -225,10 +230,21 @@ void util_init()
                     .y = gpos3_e.y / TCELL_ASIZE_Y,
                 });
             } /* update coord */
+            /* update global and tilegrid rect */
             update_grect_trect(ecos, ent);
+            /* update visual */
+            update_visual(ecos, ent);
         }
         /* visual */
-        void update_layer(ecos_t&ecos, ent_t ent)
+        void update_visual(ecos_t&ecos, ent_t ent)
+        {
+            tpos3_t tpos3 = { 0, 0, 0 };
+            if (auto*tpos3_e = ecos.try_get<com_tpos3_t>(ent))
+            { tpos3 =*tpos3_e; }
+            else if (auto*gpos3 = ecos.try_get<com_gpos3_t>(ent))
+            { tpos3 = get_tpos3_from_gpos3(*gpos3); }
+        }
+        void update_glayer(ecos_t&ecos, ent_t ent)
         {
             /* layer */
             glayer_t glayer_e = { 0 };
@@ -249,7 +265,7 @@ void util_init()
                     auto follower = family_e->follower;
                     update(ecos, follower);
                     auto*family_f =&ecos.get<com_family_t>(family_e->follower);
-                    update_layer(ecos, follower);
+                    update_glayer(ecos, follower);
                     /* siblingl */
                     auto siblingl = follower;
                     auto*family_l = family_f;
@@ -257,7 +273,7 @@ void util_init()
                     {
                         siblingl = family_l->siblingl;
                         family_l =&ecos.get<com_family_t>(siblingl);
-                        update_layer(ecos, siblingl);
+                        update_glayer(ecos, siblingl);
                     }
                     /* siblingr */
                     auto siblingr = follower;
@@ -266,7 +282,7 @@ void util_init()
                     {
                         siblingr = family_r->siblingr;
                         family_r =&ecos.get<com_family_t>(siblingr);
-                        update_layer(ecos, siblingr);
+                        update_glayer(ecos, siblingr);
                     }
                 } /* update followers */
             } /* family */
@@ -475,9 +491,9 @@ void util_init()
         .on_construct<&gfix_listener_t::update_grect_trect>(gfix_listener);
     /** visual **/
     entt::sigh_helper{ecos}.with<com_rlayer_t>()
-        .on_update<&gfix_listener_t::update_layer>(gfix_listener)
-    .on_destroy<&gfix_listener_t::update_layer>(gfix_listener)
-    .on_construct<&gfix_listener_t::update_layer>(gfix_listener);
+        .on_update<&gfix_listener_t::update_glayer>(gfix_listener)
+    .on_destroy<&gfix_listener_t::update_glayer>(gfix_listener)
+    .on_construct<&gfix_listener_t::update_glayer>(gfix_listener);
     entt::sigh_helper{ecos}.with<com_imreg_t>()
         .on_update<&gfix_listener_t::update_imreg>(gfix_listener)
     .on_destroy<&gfix_listener_t::update_imreg>(gfix_listener)
@@ -488,23 +504,8 @@ void util_init()
     .on_destroy<&gfix_listener_t::update>(gfix_listener)
     .on_construct<&gfix_listener_t::update>(gfix_listener);
 }
-void util_loop()
+void util_quit()
 {
-    timer.was_mil = timer.now_mil;
-    timer.now_mil = ::glutGet(GLUT_ELAPSED_TIME);
-    timer.dif_mil = timer.now_mil - timer.was_mil;
-    if (timer.dif_mil == 0) { timer.dif_mil = 1; }
-    else if (timer.dif_mil < 0) { timer.dif_mil = -timer.dif_mil; }
-    call_on_sec([](int was_sec, int now_sec, int dif_sec){
-        if (timer.dif_mil > 0)
-        {
-            timer.fps_num = 1'000 / timer.dif_mil;
-            timer.dispatcher.trigger<newsec_event_t>( { .sec = timer.now_mil / 1'000 } );
-            timer.dispatcher.update<newsec_event_t>();
-        }
-    });
-    timer.dispatcher.trigger<update_event_t>( { .mil = timer.now_mil } );
-    timer.dispatcher.update<update_event_t>();
 }
 
 /** getters **/

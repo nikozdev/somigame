@@ -38,10 +38,10 @@ typedef struct key_bind_t {
 
 /** datadef **/
 
-_SIGNALDEC(key_mode_set, void(key_mode_e))
-_SIGNALDEC(key_line_apply, void(key_path_t))
-_SIGNALDEC(key_line_insert, void(key_path_t))
-_SIGNALDEC(key_down, void(char))
+extern t_signal_t<void(key_mode_e)>key_mode_set_signal;
+extern t_signal_t<void(key_path_t)>key_line_apply_signal;
+extern t_signal_t<void(key_path_t)>key_line_insert_signal;
+extern t_signal_t<void(key_code_t)>key_down_signal;
 
 /** consdef **/
 
@@ -63,5 +63,6 @@ extern bool key_bind_set(key_mode_e mode, key_path_t path, key_func_t func);
 /** actions **/
 
 extern void iput_init();
+extern void iput_quit();
 
 _NAMESPACE_LEAVE
