@@ -1,17 +1,15 @@
-#pragma once
-
-/* headers */
+#ifndef SOMIGAME_IPUT_HXX
+#define SOMIGAME_IPUT_HXX 1
 
 #include "head.hxx"
-#include "util.hxx"
+
+/* headers */
 
 /* defines */
 
 /* content */
 
-_NAMESPACE_ENTER
-
-/** typedef **/
+namespace somigame { namespace iput { /* enumdef */
 
 typedef enum key_mode_e {
     _KEY_MODE_MAIN = 0x0,
@@ -22,32 +20,42 @@ typedef enum key_mode_e {
     _KEY_MODE_COUNT
 } key_mode_e;
 
+} } /* enumdef */
+
+namespace somigame { namespace iput { /* typedef */
+
 typedef void(*key_func_t)(int narg);
 
 typedef char key_code_t;
 typedef const char* key_mesg_t;
 typedef struct key_bind_t key_bind_t;
-typedef t_array_t<key_bind_t*> key_list_t;
+typedef darray_t<key_bind_t*> key_list_t;
 typedef const char* key_path_t;
 
 typedef struct key_bind_t {
-    key_func_t func = _NULL;
+    key_func_t func = NULL;
     key_list_t list;
     key_mesg_t mesg;
 } key_bind_t;
 
-/** datadef **/
+} } /* typedef */
 
-extern t_signal_t<void(key_mode_e)>key_mode_set_signal;
-extern t_signal_t<void(key_path_t)>key_line_apply_signal;
-extern t_signal_t<void(key_path_t)>key_line_insert_signal;
-extern t_signal_t<void(key_code_t)>key_down_signal;
+namespace somigame { namespace iput { /* datadef */
 
-/** consdef **/
+extern signal_t<void(key_mode_e)>key_mode_set_signal;
+extern signal_t<void(key_path_t)>key_line_apply_signal;
+extern signal_t<void(key_path_t)>key_line_insert_signal;
+extern signal_t<void(key_code_t)>key_down_signal;
+
+} } /* datadef */
+
+namespace somigame { namespace iput { /* consdef */
 
 constexpr auto KEY_COUNT = 1 << 8;
 
-/** getters **/
+} } /* consdef */
+
+namespace somigame { namespace iput { /* getters */
 
 extern std::string&get_key_line();
 extern const char*get_key_mode_name();
@@ -55,14 +63,20 @@ extern key_mode_e get_key_mode();
 extern int get_key_narg_sign();
 extern int get_key_narg();
 
-/** setters **/
+} } /* getters */
+
+namespace somigame { namespace iput { /* setters */
 
 extern bool key_mode_set(key_mode_e mode = _KEY_MODE_MAIN);
 extern bool key_bind_set(key_mode_e mode, key_path_t path, key_func_t func);
 
-/** actions **/
+} } /* setters */
 
-extern void iput_init();
-extern void iput_quit();
+namespace somigame { namespace iput { /* actions */
 
-_NAMESPACE_LEAVE
+extern void init();
+extern void quit();
+
+} } /* actions */
+
+#endif/*SOMIGAME_IPUT_HXX*/

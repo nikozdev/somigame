@@ -1,0 +1,3 @@
+[submodule "lib/libasist"]
+	path = lib/libasist
+	url = git@github.com:nikozdev/libasist.git

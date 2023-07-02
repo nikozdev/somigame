@@ -6,14 +6,12 @@
 
 /* content */
 
-_NAMESPACE_ENTER
+namespace stbl { /* actions */
 
 extern int main(int argc, const char** argv);
 
-_NAMESPACE_LEAVE
+}/* actions */
 
-/* actions */
-
-#ifdef _TYPE_RUN
+#if defined(_TYPE_EXE)
 extern int main(int argc, const char** argv);
-#endif
+#endif/*ifd(_TYPE_EXE)*/

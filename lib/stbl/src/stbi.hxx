@@ -1,4 +1,5 @@
-#pragma once
+#ifndef STBI_HXX
+#define STBI_HXX 1
 
 /* headers */
 
@@ -177,3 +178,5 @@ STBIDEF int   stbi_zlib_decode_noheader_buffer(char *obuffer, int olen, const ch
 #ifdef __cplusplus
 //}
 #endif
+
+#endif/*STBI_HXX*/

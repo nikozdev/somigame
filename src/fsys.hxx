@@ -1,31 +1,26 @@
-/* headers */
+#ifndef SOMIGAME_FSYS_HXX
+#define SOMIGAME_FSYS_HXX 1
 
 #include "head.hxx"
 
-/* defines */
+/* headers */
 
-#define _NAMESPACE_ENTER_FSYS namespace fsys {
-#define _NAMESPACE_LEAVE_FSYS }
+/* defines */
 
 /* content */
 
-_NAMESPACE_ENTER
-_NAMESPACE_ENTER_FSYS
+namespace somigame { namespace fsys { /* typedef */
 
-namespace fstd = std::experimental::filesystem;
+typedef struct saver_t {
+} saver_t, com_saver_t;
 
-using fpaf_t = fstd::path;
-using fdir_info_t = fstd::directory_entry;
-using fdir_iter_t = fstd::directory_iterator;
-using size_info_t = fstd::space_info;
+} } /* typedef */
 
-/** typedef **/
+namespace somigame { namespace fsys { /** actions **/
 
-/** datadef **/
+extern void init();
+extern void quit();
 
-/** actions **/
+} } /* actions */
 
-extern void fsys_init();
-
-_NAMESPACE_LEAVE_FSYS
-_NAMESPACE_LEAVE
+#endif/*SOMIGAME_FSYS_HXX*/

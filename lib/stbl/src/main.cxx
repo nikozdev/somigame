@@ -7,7 +7,7 @@
 
 /* content */
 
-_NAMESPACE_ENTER
+namespace stbl { /* actions */
 
 int main(int argc, const char** argv)
 {
@@ -15,11 +15,11 @@ int main(int argc, const char** argv)
     for (auto iter = 1; iter < argc; iter++)
     {
         auto fpath = argv[iter];
-        int sizew = _ZERO, sizeh = _ZERO;
+        int sizew = 0, sizeh = 0;
         int pixel_size = 3;
         unsigned char*pixel_data = stbi_load(fpath, &sizew, &sizeh, &pixel_size, 3);
         size_t msize = sizew * sizeh * pixel_size;
-        if (msize > _ZERO)
+        if (msize > 0)
         {
             std::cout << "--[[loaded]]--" << std::endl;
             std::cout << "[fpath]=" << fpath << ";" << std::endl;
@@ -50,14 +50,12 @@ int main(int argc, const char** argv)
             std::cout << "--[[failed]]--" << std::endl;
         }
     }
-    return _ERROR_NONE;
-}
+    return 0;
+} /* main */
 
-_NAMESPACE_LEAVE
+} /* actions */
 
-/* actions */
-
-#ifdef _TYPE_RUN
+#if defined(_TYPE_EXE)
 int main(int argc, const char** argv)
 {
     for (auto iter = 0; iter < argc; iter++)
@@ -66,4 +64,4 @@ int main(int argc, const char** argv)
     }
     return _NAMESPACE::main(argc, argv);
 }
-#endif
+#endif/*ifd(_TYPE_EXE)*/

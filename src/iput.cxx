@@ -1,28 +1,34 @@
+#ifndef SOMIGAME_IPUT_CXX
+#define SOMIGAME_IPUT_CXX 1
+
 #include "head.hxx"
 
 /* headers */
 
 #include "iput.hxx"
-#include "memo.hxx"
 #include "gfix.hxx"
+#include "gfix/view.hxx"
 #include "ecos.hxx"
 #include "game.hxx"
+#include "game/somi.hxx"
+#include "game/hero.hxx"
+#include "game/picktile.hxx"
 #include "main.hxx"
 
 /* defines */
 
 /* content */
 
-_NAMESPACE_ENTER
+namespace somigame { namespace iput { /* signals */
 
-/** datadef **/
+signal_t<void(key_mode_e)>key_mode_set_signal;
+signal_t<void(key_path_t)>key_line_apply_signal;
+signal_t<void(key_path_t)>key_line_insert_signal;
+signal_t<void(key_code_t)>key_down_signal;
 
-t_signal_t<void(key_mode_e)>key_mode_set_signal;
-t_signal_t<void(key_path_t)>key_line_apply_signal;
-t_signal_t<void(key_path_t)>key_line_insert_signal;
-t_signal_t<void(key_code_t)>key_down_signal;
+} } /* signals */
 
-extern t_signal_t<void(void)>game_init_bot_signal;
+namespace somigame { namespace iput { /* datadef */
 
 std::string key_line = "";
 int key_narg_sign = +1;
@@ -30,10 +36,12 @@ int key_narg = 0;
 
 key_mode_e key_mode = _KEY_MODE_COUNT;
 key_list_t key_list_table[_KEY_MODE_COUNT] = { };
-key_list_t*key_list = _NULL;
-key_bind_t*key_bind_used = _NULL;
+key_list_t*key_list = NULL;
+key_bind_t*key_bind_used = NULL;
 
-/** getters **/
+} } /* datadef */
+
+namespace somigame { namespace iput { /* getters */
 
 std::string&get_key_line() { return key_line; }
 const char*get_key_mode_name()
@@ -49,7 +57,9 @@ key_mode_e get_key_mode() { return key_mode; }
 int get_key_narg_sign() { return key_narg_sign; }
 int get_key_narg() { return key_narg; }
 
-/** setters **/
+} } /* getters */
+
+namespace somigame { namespace iput { /** setters **/
 
 bool key_mode_set(key_mode_e mode)
 {
@@ -58,9 +68,9 @@ bool key_mode_set(key_mode_e mode)
         key_mode = mode;
         key_list =&key_list_table[mode];
         key_mode_set_signal.holder.publish(mode);
-        return _TRUTH;
+        return TRUTH;
     }
-    else { return _FALSE; }
+    else { return FALSE; }
 }
 
 bool key_bind_set(key_mode_e mode, key_path_t path, key_func_t func)
@@ -84,25 +94,27 @@ bool key_bind_set(key_mode_e mode, key_path_t path, key_func_t func)
             }
             else
             {
-                memo::owner->new_one<key_bind_t>(bind);
+                memo::pager_t::get()->new_one<key_bind_t>(bind);
                 (*list)[code] = bind;
             }
             list =&bind->list;
         }
         bind->func = func;
-        return _TRUTH;
+        return TRUTH;
     }
     else
     {
-        return _FALSE;
+        return FALSE;
     }
 }
 
-/** actions **/
+} } /* setters */
+
+namespace somigame { namespace iput { /* actions */
 
 static void key_line_reset()
 {
-    key_bind_used = _NULL;
+    key_bind_used = NULL;
     key_narg = 0;
 }
 
@@ -110,7 +122,7 @@ static void key_line_apply()
 {
     if (key_bind_used)
     {
-        if (key_bind_used->func == _NULL)
+        if (key_bind_used->func == NULL)
         {
             key_line = "\"" + key_line + "\"" + ": is not a valid keybind";
         }
@@ -161,8 +173,9 @@ static void key_line_insert(key_code_t code)
     }
 }
 
-void iput_init()
+void init()
 {
+    using namespace ecos;
     ::glutSetKeyRepeat(GLUT_KEY_REPEAT_ON);
     ::glutKeyboardFunc([](unsigned char key, int _mx, int _my) {
         key_down_signal.holder.publish(key);
@@ -188,62 +201,62 @@ void iput_init()
         /*** view mode ***/
         key_bind_set(mode, "mv", [](int narg){ key_mode_set(_KEY_MODE_VIEW); });
         /*** quit ***/
-        key_bind_set(mode, "mq", [](int narg){ main_quit(); });
+        key_bind_set(mode, "mq", [](int narg){ main::quit(); });
     }
     key_mode_set(_KEY_MODE_MAIN);
-    if constexpr (_TRUTH)
+    if constexpr (TRUTH)
     { /* keybinds */
-        if constexpr (_TRUTH)
+        if constexpr (TRUTH)
         { /** view **/
             key_bind_set(_KEY_MODE_VIEW, "e", [](int narg){
-                view_turn(_FALSE);
+                gfix::view_t::get().turn90(FALSE);
             });
             key_bind_set(_KEY_MODE_VIEW, "q", [](int narg){
-                view_turn(_TRUTH);
+                gfix::view_t::get().turn90(TRUTH);
             });
             /*** zoom ***/
             key_bind_set(_KEY_MODE_VIEW, "z", [](int narg){
-                auto view_entity = ecos.ctx().get<entity_t>("view_entity"_hstr);
-                auto&view_asize = ecos.get<com_asize_t>(view_entity);
-                view_asize.x = std::max(view_asize.x << narg, VIEW_ASIZE_X/2);
-                view_asize.y = std::max(view_asize.y << narg, VIEW_ASIZE_Y/2);
-                ecos.replace<com_asize_t>(view_entity, view_asize);
+                auto view_entity = gfix::view_t::get().get_ent();
+                auto&view_asize = ecs.get<geom::com_asize_t>(view_entity);
+                view_asize.x = std::max(view_asize.x << narg, gfix::VIEW_ASIZE_X<<1);
+                view_asize.y = std::max(view_asize.y << narg, gfix::VIEW_ASIZE_Y<<1);
+                ecs.replace<geom::com_asize_t>(view_entity, view_asize);
             });
         }
-        if constexpr (_TRUTH)
+        if constexpr (TRUTH)
         { /** hero **/
             struct hero_listener_t {
                 auto&get_mover()
-                { return ecos.get<com_mover_t>(this->hero_entity); }
+                { return ecs.get<game::com_mover_t>(this->hero_entity); }
                 void on_game_init()
-                { this->hero_entity = ecos.ctx().get<ent_t>("hero_entity"_hstr); }
+                { this->hero_entity = game::hero_t::get().get_ent(); }
                 void on_key_a(int narg)
                 {
                     auto&mover = this->get_mover();
-                    mover.move.x -= 1*(get_num_sign(narg)+narg);
-                    ecos.replace<com_mover_t>(this->hero_entity, mover);
+                    mover.move.x -= 1*(nums::get_sign(narg)+narg);
+                    ecs.replace<game::com_mover_t>(this->hero_entity, mover);
                 }
                 void on_key_d(int narg)
                 {
                     auto&mover = this->get_mover();
-                    mover.move.x += 1*(get_num_sign(narg)+narg);
-                    ecos.replace<com_mover_t>(this->hero_entity, mover);
+                    mover.move.x += 1*(nums::get_sign(narg)+narg);
+                    ecs.replace<game::com_mover_t>(this->hero_entity, mover);
                 }
                 void on_key_s(int narg)
                 {
                     auto&mover = this->get_mover();
-                    mover.move.y -= 1*(get_num_sign(narg)+narg);
-                    ecos.replace<com_mover_t>(this->hero_entity, mover);
+                    mover.move.y -= 1*(nums::get_sign(narg)+narg);
+                    ecs.replace<game::com_mover_t>(this->hero_entity, mover);
                 }
                 void on_key_w(int narg)
                 {
                     auto&mover = this->get_mover();
-                    mover.move.y += 1*(get_num_sign(narg)+narg);
-                    ecos.replace<com_mover_t>(this->hero_entity, mover);
+                    mover.move.y += 1*(nums::get_sign(narg)+narg);
+                    ecs.replace<game::com_mover_t>(this->hero_entity, mover);
                 }
                 entity_t hero_entity;
             } static hero_listener{};
-            game_init_bot_signal.binder.connect<
+            game::init_bot_signal.binder.connect<
                 &hero_listener_t::on_game_init
                 >(hero_listener);
             key_bind_set(_KEY_MODE_HERO, "a", [](int narg){
@@ -259,55 +272,55 @@ void iput_init()
                 hero_listener.on_key_w(narg);
             });
         } /* pick */
-        if constexpr (_TRUTH)
+        if constexpr (TRUTH)
         { /** pick **/
             struct pick_listener_t
             {
                 void on_game_init()
                 {
-                    this->pick_entity = ecos.ctx().get<ent_t>("pick_entity"_hstr);
-                    this->hero_entity = ecos.ctx().get<ent_t>("hero_entity"_hstr);
+                    this->pick_entity = game::picktile_t::get().get_ent();
+                    this->hero_entity = game::hero_t::get().get_ent();
                 }
                 void on_key_a(int narg)
                 {
-                    auto&mover = ecos.get<com_mover_t>(pick_entity);
-                    mover.move.x -= 1*(get_num_sign(narg)+narg);
-                    ecos.replace<com_mover_t>(this->pick_entity, mover);
+                    auto&mover = ecs.get<game::com_mover_t>(pick_entity);
+                    mover.move.x -= 1*(nums::get_sign(narg)+narg);
+                    ecs.replace<game::com_mover_t>(this->pick_entity, mover);
                 }
                 void on_key_d(int narg)
                 {
-                    auto&mover = ecos.get<com_mover_t>(pick_entity);
-                    mover.move.x += 1*(get_num_sign(narg)+narg);
-                    ecos.replace<com_mover_t>(this->pick_entity, mover);
+                    auto&mover = ecs.get<game::com_mover_t>(pick_entity);
+                    mover.move.x += 1*(nums::get_sign(narg)+narg);
+                    ecs.replace<game::com_mover_t>(this->pick_entity, mover);
                 }
                 void on_key_s(int narg)
                 {
-                    auto&mover = ecos.get<com_mover_t>(pick_entity);
-                    mover.move.y -= 1*(get_num_sign(narg)+narg);
-                    ecos.replace<com_mover_t>(this->pick_entity, mover);
+                    auto&mover = ecs.get<game::com_mover_t>(pick_entity);
+                    mover.move.y -= 1*(nums::get_sign(narg)+narg);
+                    ecs.replace<game::com_mover_t>(this->pick_entity, mover);
                 }
                 void on_key_w(int narg)
                 {
-                    auto&mover = ecos.get<com_mover_t>(pick_entity);
-                    mover.move.y += 1*(get_num_sign(narg)+narg);
-                    ecos.replace<com_mover_t>(this->pick_entity, mover);
+                    auto&mover = ecs.get<game::com_mover_t>(pick_entity);
+                    mover.move.y += 1*(nums::get_sign(narg)+narg);
+                    ecs.replace<game::com_mover_t>(this->pick_entity, mover);
                 }
                 void on_key_g(int narg)
                 {
-                    tpos3_t hero_tpos3 = ecos.get<com_tpos3_t>(this->hero_entity);
-                    tpos3_t pick_tpos3 = ecos.get<com_tpos3_t>(this->pick_entity);
-                    mover_t&hero_mover = ecos.get<com_mover_t>(this->hero_entity);
+                    game::tpos3_t hero_tpos3 = ecs.get<game::com_tpos3_t>(this->hero_entity);
+                    game::tpos3_t pick_tpos3 = ecs.get<game::com_tpos3_t>(this->pick_entity);
+                    game::mover_t&hero_mover = ecs.get<game::com_mover_t>(this->hero_entity);
                     hero_mover.move = {
                         .x = pick_tpos3.x - hero_tpos3.x,
                         .y = pick_tpos3.y - hero_tpos3.y,
                     };
-                    ecos.patch<com_mover_t>(this->hero_entity);
-                    ecos.replace<com_apos2_t>(this->pick_entity);
+                    ecs.patch<game::com_mover_t>(this->hero_entity);
+                    ecs.replace<geom::com_apos2_t>(this->pick_entity);
                 }
                 entity_t pick_entity;
                 entity_t hero_entity;
             } static pick_listener{};
-            game_init_bot_signal.binder.connect<
+            game::init_bot_signal.binder.connect<
                 &pick_listener_t::on_game_init
                 >(pick_listener);
             key_bind_set(_KEY_MODE_PICK, "a", [](int narg){
@@ -328,8 +341,10 @@ void iput_init()
         } /* pick */
     } /* keybinds */
 }
-void iput_quit()
+void quit()
 {
 }
 
-_NAMESPACE_LEAVE
+} } /* actions */
+
+#endif/*SOMIGAME_IPUT_CXX*/

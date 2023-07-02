@@ -1,3 +1,6 @@
+#ifndef SOMIGAME_FSYS_CXX
+#define SOMIGAME_FSYS_CXX 1
+
 #include "head.hxx"
 
 /* headers */
@@ -7,14 +10,15 @@
 
 /* content */
 
-_NAMESPACE_ENTER
+namespace somigame { namespace fsys { /* actions */
 
-/** datadef **/
-
-/** actions **/
-
-void fsys_init()
+void init()
+{
+}
+void quit()
 {
 }
 
-_NAMESPACE_LEAVE
+} } /* actions */
+
+#endif/*SOMIGAME_FSYS_CXX*/

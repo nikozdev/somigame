@@ -1,3 +1,6 @@
+#ifndef STBI_CXX
+#define STBI_CXX 1
+
 /* headers */
 
 #include "stbi.hxx"
@@ -7218,3 +7221,5 @@ STBIDEF int stbi_is_16_bit_from_callbacks(stbi_io_callbacks const *c, void *user
    stbi__start_callbacks(&s, (stbi_io_callbacks *) c, user);
    return stbi__is_16_main(&s);
 }
+
+#endif/*STBI_CXX*/
