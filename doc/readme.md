@@ -78,24 +78,7 @@
 > > animation should be skippable
 - text alignment relative to different parts of a text label
 > i want each glyph to align like all my quads do with pivots and rposes
-- visual value
-> i need a value that would let me decide if i should draw an entity
-> i think it should be a number
-> > because there can be many hiding/showing factors
-> for 0 - do not care, just draw it if nothing else is against
-> if this is negative value - we always hide the object
-> if this is a positive value - we always show the object
-- vrange
-> visual range component to hide covering tiles above
-> at least i need this to display the main hero under tiles
-> itterate over all entities in vrange-x-vrange square
-> > hide the ones that have x\*x + y\*y > r\*r
-- the difference in z axis should change global positions
-> z value higher than the hero's z value increases y by 1 tile height
-> z value lower than the hero's z value decreases y by 1 tile height
 ### world
-- tiles should have all entities located on them like family followers
-> this will help me to get access to all entities on the tilemap
 - other than tiles and the main hero, we should have other objects
 > monsters
 > critters
@@ -126,6 +109,11 @@
 > what the hero can build should depend on their powers
 - there should be a skill tree
 > few branches that should give different useful abilities
+### audio
+- i wanna have music and sounds
+> separate namespace with its own components
+> a minimalistic library for 2d sound
+> > there are advices to use portaudio for such cases
 ### interface
 - there should be some panels and windows to open
 > status window
@@ -138,6 +126,13 @@
 > but the system is not that clean right now
 > i wanna improve the keyboard organization
 > > using templates, classes and signals
+- i wanna have settings
+> there should be a module for changing properties of the game
+> > aspect ratio
+> > sound
+> > maybe even color palette
+- graphical user interfaces should be separate
+> like divided by groups... main hud, menu, settings, loading, etc...
 ## this file...
 - i do not think i am good at writing readme.md
 > but i feel i should add it anyways

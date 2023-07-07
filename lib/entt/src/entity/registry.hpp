@@ -1140,6 +1140,9 @@ public:
     [[nodiscard]] auto on_construct(const id_type id = type_hash<Type>::value()) {
         return assure<Type>(id).on_construct();
     }
+    template<typename Type>
+    [[nodiscard]] auto on_ctor(const id_type id = type_hash<Type>::value())
+    { return assure<Type>(id).on_construct(); }
 
     /**
      * @brief Returns a sink object for the given component.
@@ -1164,6 +1167,9 @@ public:
     [[nodiscard]] auto on_update(const id_type id = type_hash<Type>::value()) {
         return assure<Type>(id).on_update();
     }
+    template<typename Type>
+    [[nodiscard]] auto on_proc(const id_type id = type_hash<Type>::value())
+    { return assure<Type>(id).on_proc(); }
 
     /**
      * @brief Returns a sink object for the given component.
@@ -1188,6 +1194,9 @@ public:
     [[nodiscard]] auto on_destroy(const id_type id = type_hash<Type>::value()) {
         return assure<Type>(id).on_destroy();
     }
+    template<typename Type>
+    [[nodiscard]] auto on_dtor(const id_type id = type_hash<Type>::value())
+    { return assure<Type>(id).on_dtor(); }
 
     /**
      * @brief Returns a view for the given components.

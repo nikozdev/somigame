@@ -1,31 +1,17 @@
 #ifndef SOMIGAME_GFIX_HXX
-#define SOMIGAME_GFIX_HXX 1
+#define SOMIGAME_GFIX_HXX
 
 #include "head.hxx"
+#include "gfix/type_visual.hxx"
+#include "gfix/type_layer.hxx"
+#include "gfix/type_image.hxx"
+#include "gfix/type_label.hxx"
+#include "gfix/type_fonts.hxx"
+#include "gfix/type_antor.hxx"
+#include "gfix/unit_guiman.hxx"
+#include "gfix/unit_camera.hxx"
+#include "gfix/func_init.hxx"
+#include "gfix/func_quit.hxx"
+#include "gfix/func_work.hxx"
 
-/* headers */
-
-namespace somigame { /* content */
-
-namespace gfix { /* signals */
-
-extern signal_t<void(void)> init_top_signal;
-extern signal_t<void(void)> init_bot_signal;
-extern signal_t<void(void)> quit_top_signal;
-extern signal_t<void(void)> quit_bot_signal;
-extern signal_t<void(void)> work_top_signal;
-extern signal_t<void(void)> work_bot_signal;
-
-} /* signals */
-
-namespace gfix { /* actions */
-
-extern bool init();
-extern bool quit();
-extern bool work();
-
-} /* actions */
-
-} /* content */
-
-#endif/*SOMIGAME_GFIX_HXX*/
+#endif//SOMIGAME_GFIX_HXX

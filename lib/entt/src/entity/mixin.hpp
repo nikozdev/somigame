@@ -162,6 +162,8 @@ public:
     [[nodiscard]] auto on_construct() noexcept {
         return sink{construction};
     }
+    [[nodiscard]] auto on_ctor() noexcept
+    { return sink{construction}; }
 
     /**
      * @brief Returns a sink object.
@@ -177,6 +179,8 @@ public:
     [[nodiscard]] auto on_update() noexcept {
         return sink{update};
     }
+    [[nodiscard]] auto on_proc() noexcept
+    { return sink{update}; }
 
     /**
      * @brief Returns a sink object.
@@ -192,6 +196,8 @@ public:
     [[nodiscard]] auto on_destroy() noexcept {
         return sink{destruction};
     }
+    [[nodiscard]] auto on_dtor() noexcept
+    { return sink{destruction}; }
 
     /**
      * @brief Emplace elements into a storage.

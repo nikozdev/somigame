@@ -1,7 +1,7 @@
 # basic
 
 NAME:=somigame
-VNUM:=0xa0a3a0
+VNUM:=0xa0a3a1
 TYPE:=EXE
 CONF:=WORK
 
@@ -92,6 +92,7 @@ CFLAGS+= -O3
 endif
 CFLAGS+= -Wno-error=narrowing -Wno-narrowing
 CFLAGS+= -Wno-class-conversion
+CFLAGS+= -Wno-changes-meaning
 CFLAGS+= -fpermissive
 CFLAGS+= -D_NAME=$(NAME) -D_NAME_STR=\"$(NAME)\"
 CFLAGS+= -D_VNUM=$(VNUM) -D_VNUM_STR=\"$(VNUM)\"
