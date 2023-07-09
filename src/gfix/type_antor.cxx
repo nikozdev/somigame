@@ -10,6 +10,8 @@ namespace somigame { namespace gfix {
 
 // typedef
 
+#if 1
+#else
 antor_t::antor_t(ecos::ent_t ent)
 : ent(ent), start{ main::get_ticker().now_mil }, step_array{}
 { }
@@ -35,6 +37,9 @@ bool_t antor_t::play()
     main::ticker_update_signal.binder.connect<&this_t::proc>(*this);
     return TRUTH;
 }
+#endif
+
+// actions
 
 } } // namespace somigame { namespace gfix {
 

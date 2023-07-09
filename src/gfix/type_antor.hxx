@@ -2,91 +2,130 @@
 #define SOMIGAME_GFIX_TYPE_ANTOR_HXX
 
 #include "../head.hxx"
-#include "../ecos.hxx"
+#include "../ecos/type_ent.hxx"
+#include "../ecos/type_reg.hxx"
+#include "../main/unit_ticker.hxx"
 
 namespace somigame { namespace gfix {
 
 // typedef
 
-typedef class antor_t
+template<typename com_t, typename mem_t, typename...paf_t>
+class antor_t
 {
-public: /* typedef */
-    using this_t = antor_t;
-    using len_t = msize_t;
-    class a_step_t
+public: // typedef
+#if 1
+    using ref_t = memo::refer_t<antor_t,
+    &memo::giver_t::give_static<memo::pager_t>,
+    &memo::taker_t::take_static<memo::pager_t>,
+    count_t>;
+#else
+    using ref_t = antor_t*;
+#endif
+    using len_t = main::timen_t;
+    using ent_t = ecos::ent_t;
+public: // codetor
+    antor_t(len_t beg, len_t end, ent_t ent, mem_t val, paf_t&&...paf)
+    : ref{ NULL },
+    beg{ beg }, end{ end },
+    len_dif{ end - beg },
+    ent{ ent },
+    src{ get_member(ecos::reg.get<com_t>(ent), paf...) }, tar{val},
+    mem_dif{ tar - src },
+    paf{ paf... }
     {
-    public: /* typedef */
-        using this_t = a_step_t;
-    public: /* codetor */
-        a_step_t(len_t since, len_t until) :
-            since(since), until(until) {}
-        virtual ~a_step_t() = default;
-    public: /* actions */
-        virtual bool play(len_t pas) = 0;
-    public: /* datadef */
-        const len_t since;
-        const len_t until;
-    }; /* a_step_t */
-    template<typename t_com_t, typename t_mem_t, typename...t_paf_t>
-    class t_step_t : public a_step_t
-    {
-    public: /* typedef */
-        using this_t = t_step_t<t_com_t, t_mem_t, t_paf_t...>;
-        using com_t = t_com_t;
-        using mem_t = t_mem_t;
-    public: /* codetor */
-        t_step_t(len_t since, len_t until, t_mem_t tar, ecos::ent_t ent, t_paf_t&&...paf) :
-            a_step_t(since, until),
-            ent(ent), paf{paf...},
-            was(get_member(
-                    ecos::reg.get<t_com_t>(ent),
-                    std::forward<t_paf_t>(paf)...
-            )), tar(tar)
-            { }
-    public: /* actions */
-        virtual bool play(len_t pas) override
-        {
-            if (!ecos::reg.valid(this->ent)) { return FALSE; }
-            if (auto*com = ecos::reg.try_get<t_com_t>(this->ent))
-            {
-                if (pas >= since && pas <= until)
-                {
-                    auto&mem = get_member(*com, this->paf);
-                    mem = was + ((tar-was) * (pas-since) / (until-since));
-                    return TRUTH;
-                }
-                else { return FALSE; }
-                return TRUTH;
-            }
-            else
-            { return FALSE; }
-        }
-    private: /* datadef */
-        ecos::ent_t ent;
-        const std::tuple<t_paf_t...> paf;
-    public: /* datadef */
-        const mem_t was;
-        const mem_t tar;
-    }; /* t_step_t */
-public: /* codetor */
-    antor_t(ecos::ent_t ent);
-public: /* actions */
-    template<typename t_com_t, typename t_tar_t, typename...t_paf_t>
-    bool_t insert(len_t since, len_t until, t_tar_t tar, t_paf_t&&...paf)
-    {
-        auto*step = new t_step_t<t_com_t, t_tar_t, t_paf_t...>(
-            since, until, tar, this->ent, std::forward<t_paf_t>(paf)...
-        );
-        step_array.push_back(step);
-        return TRUTH;
+        main::ticker_update_signal.binder
+        .connect<&antor_t::proc>(*this);
+        this->play(this->beg);
     }
-    void_t proc();
-    bool_t play();
-public: /* datadef */
-    ecos::ent_t ent;
-    len_t start;
-    darray_t<a_step_t*>step_array;
-} antor_t;
+    ~antor_t()
+    {
+        main::ticker_update_signal.binder
+        .disconnect<&antor_t::proc>(*this);
+        this->play(this->end);
+    }
+public: // setters
+    void set(ref_t&ref) { this->ref = ref; }
+public: // actions
+    void play(len_t now)
+    {
+        if (auto*com = ecos::reg.try_get<com_t>(ent))
+        {
+            auto&mem = get_member(*com, this->paf);
+            mem = src + ( (mem_dif * (now - beg)) / len_dif );
+            ecos::reg.patch<com_t>(ent);
+        }
+        else { this->stop(); }
+    }
+    void proc(const main::ticker_t&ticker)
+    {
+        len_t now = ticker.now_mil;
+        if (now < this->beg)
+        { return; }
+        else if (now <= this->end)
+        { return this->play(now); }
+        else
+        { return this->stop(); }
+    }
+    void stop()
+    {
+        if (this->ref)
+        {
+#if 1
+            this->ref.reset(); 
+#else
+            auto ref = this->ref;
+            this->ref = NULL;
+            memo::pager_t::get()->del_one(ref);
+#endif
+        }
+    }
+private: // datadef
+    ref_t ref;
+    len_t beg, end, len_dif;
+    ent_t ent;
+    mem_t src, tar, mem_dif;
+    const std::tuple<paf_t...> paf;
+}; // animantor type
+
+// actions
+
+_DECL_FUNC v1b_t init_type_antor();
+_DECL_FUNC v1b_t quit_type_antor();
+
+template<typename com_t, typename mem_t, typename...paf_t>
+_DECL_FUNC auto make_antor(
+    main::timen_t beg, main::timen_t end,
+    ecos::ent_t ent,
+    mem_t val,
+    paf_t&&...paf
+) {
+    using antor_t = antor_t<com_t, mem_t, paf_t...>;
+#if 1
+    using refer_t = memo::refer_t<antor_t,
+    &memo::giver_t::give_static<memo::pager_t>,
+    &memo::taker_t::take_static<memo::pager_t>,
+    count_t>;
+    refer_t refer;
+    refer.template setup<antor_t>(
+        beg, end,
+        ent,
+        val,
+        std::forward<paf_t>(paf)...
+    );
+#else
+    using refer_t = antor_t*;
+    refer_t refer;
+    memo::pager_t::get()->new_one(refer,
+        beg, end,
+        ent,
+        val,
+        std::forward<paf_t>(paf)...
+    );
+#endif
+    refer->set(refer);
+    return refer;
+} // create animation for a member from a component of an entity
 
 } } // namespace somigame { namespace gfix {
 
