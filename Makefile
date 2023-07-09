@@ -1,7 +1,7 @@
 # basic
 
 NAME:=somigame
-VNUM:=0xa0a3a1
+VNUM:=0xa0a3a2
 TYPE:=EXE
 CONF:=WORK
 
@@ -144,58 +144,42 @@ TERMDB:= $(shell which gdb)
 
 build: build-head $(PCHFSL) $(OBJFSL) $(BINFSL)
 build-head:
-	@for lib in ${LIBUSE}; do ${MAKE} -C $(LIBDIR)/$$lib TYPE=$(LIBMOD) build; done
 	$(info "[[build]]")
 
 clean: clean-head
 	$(TERMRM) $(OBJFSL) $(BINFSL) $(PCHFSL)
 clean-head:
-	@for lib in ${LIBUSE}; do ${MAKE} -C $(LIBDIR)/$$lib TYPE=$(LIBMOD) clean; done
 	$(info "[[clean]]")
 
 ## external
 
 setup: setup-head $(BINFTL) $(MANFTL)
 setup-head:
-	@for lib in ${LIBUSE}; do ${MAKE} -C $(LIBDIR)/$$lib TYPE=$(LIBMOD) setup; done
 	$(info "[[setup]]")
 
 reset: reset-head
 	$(TERMRM) $(BINFTL) $(MANFTL)
 reset-head:
-	@for lib in ${LIBUSE}; do ${MAKE} -C $(LIBDIR)/$$lib TYPE=$(LIBMOD) reset; done
 	$(info "[[reset]]")
 
 ## addition
 
 again: again-head clean build
 again-head:
-	@for lib in ${LIBUSE}; do ${MAKE} -C $(LIBDIR)/$$lib TYPE=$(LIBMOD) again; done
 	$(info "[[again]]")
 
-ifeq ($(TYPE),EXE)
 start: start-head build
 	@for bin in ${BINFSL}; do $$bin $(ARGV); done
-else
-start: start-head build
-endif
 start-head:
-	@for lib in ${LIBUSE}; do ${MAKE} -C $(LIBDIR)/$$lib TYPE=$(LIBMOD) start; done
 	$(info "[[start]]")
 
 rerun: rerun-head again start
 rerun-head:
-	@for lib in ${LIBUSE}; do ${MAKE} -C $(LIBDIR)/$$lib TYPE=$(LIBMOD) rerun; done
 	$(info "[[rerun]]")
 
-ifeq ($(TYPE),EXE)
 debug: debug-head again
 	@for bin in ${BINFSL}; do $(TERMDB) $$bin $(ARGV); done
-else
-debug: debug-head again
-endif
 debug-head:
-	@for lib in ${LIBUSE}; do ${MAKE} -C $(LIBDIR)/$$lib TYPE=$(LIBMOD) debug; done
 	$(info "[[debug]]")
 
 print: print-head
@@ -273,7 +257,6 @@ print: print-head
 	$(info [debug]=clean, rebuild and run the binary file with the debugger)
 	$(info [print]=write this whole text)
 print-head:
-	@for lib in ${LIBUSE}; do ${MAKE} -C $(LIBDIR)/$$lib TYPE=$(LIBMOD) print; done
 	$(info [[print]])
 
 ## source

@@ -133,6 +133,25 @@
 > > maybe even color palette
 - graphical user interfaces should be separate
 > like divided by groups... main hud, menu, settings, loading, etc...
+### organization
+- man-type-pattern - i've just invented this one... y23m07d07-h19m49
+> this is a pattern of managers who manage their particular values
+> the idea is having a tree of classes that handle their own types
+> possible use-cases that i need that for
+> > keyman - keyboard manager
+> > > hierarchies of keymodes and their keybindings
+> > optman - options manager
+> > > hierarchies of option menus and values
+> > guiman - graphical user interfaces manager
+> > > gui, hierarchies of menus and widgets
+> possible implementation
+> > make an abstract class of the type we need that for
+> > > optman for example
+> > > it needs an array of pointers to other sub-mans
+> > > it also needs arrays of the actual values it is taking care of
+> > > getter and setter methods
+> > > it can also have a link to it's preceeding pointer
+> > there should always be a top-level entry that handles the hierarchy
 ## this file...
 - i do not think i am good at writing readme.md
 > but i feel i should add it anyways
