@@ -2,7 +2,16 @@
 #define SOMIGAME_GFIX_FUNC_INIT_CXX
 
 #include "../head.hxx"
-#include "../gfix.hxx"
+#include "../gfix/type_drawn.hxx"
+#include "../gfix/type_layer.hxx"
+#include "../gfix/type_image.hxx"
+#include "../gfix/type_label.hxx"
+#include "../gfix/type_fonts.hxx"
+#include "../gfix/type_antor.hxx"
+#include "../gfix/type_shape.hxx"
+#include "../gfix/unit_guiman.hxx"
+#include "../gfix/unit_camera.hxx"
+#include "../gfix/func_init.hxx"
 
 namespace somigame { namespace gfix {
 
@@ -34,11 +43,12 @@ _DEFN_FUNC bool init()
 #endif
     ::glShadeModel(GL_FLAT);
     // modules
+    _EFNOT(gfix::init_type_drawn(), return FALSE, "init type drawn failed");
     _EFNOT(gfix::init_type_layer(), return FALSE, "init type layer failed");
     _EFNOT(gfix::init_type_image(), return FALSE, "init type image failed");
     _EFNOT(gfix::init_type_label(), return FALSE, "init type label failed");
     _EFNOT(gfix::init_type_fonts(), return FALSE, "init type fonts failed");
-    _EFNOT(gfix::init_type_visual(), return FALSE, "init type visual failed");
+    _EFNOT(gfix::init_type_shape(), return FALSE, "init type shape failed");
     _EFNOT(gfix::init_unit_camera(), return FALSE, "init unit camera failed");
     _EFNOT(gfix::init_unit_guiman(), return FALSE, "init unit guiman failed");
     // final

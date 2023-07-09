@@ -10,7 +10,7 @@
 #include "../geom/type_rects.hxx"
 #include "../gfix/type_image.hxx"
 #include "../gfix/type_layer.hxx"
-#include "../gfix/type_visual.hxx"
+#include "../gfix/type_drawn.hxx"
 #include "../game/type_sizes.hxx"
 #include "../game/type_coord.hxx"
 #include "../game/type_rects.hxx"
@@ -77,7 +77,7 @@ ecos::ent_t set_tcell_into_tposi(tposi_t tposi, tcell_t tcell)
         // coord
         ecos::reg.emplace<geom::com_aposi_t>(ent, gposi.x, gposi.y);
         // visual
-        ecos::reg.emplace<gfix::com_visual_t>(ent);
+        ecos::reg.emplace<gfix::com_rdrawn_t>(ent, TRUTH);
         ecos::reg.emplace<gfix::com_color_t>(ent, 0xff);
         ecos::reg.emplace<gfix::com_imreg_t>(ent, gfix::imreg_t{
             .index = gfix::_IMORI_TILE_TEST,

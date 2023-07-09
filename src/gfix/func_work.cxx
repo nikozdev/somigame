@@ -10,8 +10,9 @@
 #include "../gfix/type_image.hxx"
 #include "../gfix/type_label.hxx"
 #include "../gfix/type_fonts.hxx"
+#include "../gfix/type_shape.hxx"
 #include "../gfix/type_layer.hxx"
-#include "../gfix/type_visual.hxx"
+#include "../gfix/type_drawn.hxx"
 #include "../gfix/unit_camera.hxx"
 #include "../gfix/unit_guiman.hxx"
 #include "../game/type_sizes.hxx"
@@ -43,9 +44,9 @@ _DEFN_FUNC bool work()
     // count all visible components
     count_t count = 0;
     for (auto&&
-        [entity, visual]
+        [entity, gdrawn]
         : ecos::reg.view<
-        com_visual_t
+        com_gdrawn_t
         >().each()
     ) { count += 1; }
     // make a list of drawable entities
@@ -63,13 +64,13 @@ _DEFN_FUNC bool work()
     drawlist.back = drawlist.head;
     drawlist.tail = drawlist.head + count;
     for (auto
-        [entity, visual, glayer, gposi_e, tposi_e, grect_e]
+        [entity, gdrawn, glayer, gposi_e, tposi_e, grect_e]
         : ecos::reg.view<
-        gfix::com_visual_t,gfix::com_glayer_t,
+        gfix::com_gdrawn_t,gfix::com_glayer_t,
         geom::com_gposi_t, game::com_tposi_t, geom::com_grect_t
         >().each()
     ) { // fill the drawlist
-        if (visual.vet() && ((FALSE
+        if (gdrawn.valid && ((FALSE
         ) || (TRUTH
         && ((grect_e.x.l <= camera_grect.x.r) && (grect_e.y.b <= camera_grect.y.t))
         && ((grect_e.x.l >= camera_grect.x.l) && (grect_e.y.b >= camera_grect.y.b))

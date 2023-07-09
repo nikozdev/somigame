@@ -13,7 +13,9 @@
 #include "../geom/type_mover.hxx"
 #include "../gfix/type_image.hxx"
 #include "../gfix/type_layer.hxx"
-#include "../gfix/type_visual.hxx"
+#include "../gfix/type_drawn.hxx"
+#include "../gfix/type_shape.hxx"
+#include "../gfix/type_antor.hxx"
 #include "../gfix/unit_camera.hxx"
 #include "../game/type_sizes.hxx"
 #include "../game/type_coord.hxx"
@@ -118,7 +120,7 @@ _DEFN_FUNC bool init_unit_gamer()
     // direc
     ecos::reg.emplace<geom::com_direc_t>(gamer_ent, +0, -1);
     // visual
-    ecos::reg.emplace<gfix::com_visual_t>(gamer_ent);
+    ecos::reg.emplace<gfix::com_rdrawn_t>(gamer_ent, TRUTH);
     ecos::reg.emplace<gfix::com_rlayer_t>(gamer_ent, 2);
     ecos::reg.emplace<gfix::com_color_t>(gamer_ent, 0xff);
     ecos::reg.emplace<gfix::com_imreg_t>(gamer_ent, gfix::com_imreg_t{
@@ -196,7 +198,7 @@ _DEFN_FUNC bool init_unit_gamer()
             .y = game::TCELL_ASIZE_Y,
         });
         // visual
-        ecos::reg.emplace<gfix::com_visual_t>(picker_ent).set(gfix::visual_t::HARD_HIDE);
+        ecos::reg.emplace<gfix::com_rdrawn_t>(picker_ent, FALSE);
         ecos::reg.emplace<gfix::com_rlayer_t>(picker_ent, +3);
         ecos::reg.emplace<gfix::com_color_t>(picker_ent, 0xff);
         ecos::reg.emplace<gfix::com_imreg_t>(picker_ent, gfix::imreg_t{
@@ -211,11 +213,9 @@ _DEFN_FUNC bool init_unit_gamer()
             void on_key_mode(main::key_mode_e mode)
             {
                 ecos::reg.replace<geom::com_aposi_t>(entity);
-                ecos::reg.get<gfix::com_visual_t>(entity).set(
-                    gfix::visual_t::HARD_SHOW*(mode==main::_KEY_MODE_PICK) +
-                    + gfix::visual_t::HARD_HIDE*(mode!=main::_KEY_MODE_PICK)
+                ecos::reg.replace<gfix::com_rdrawn_t>(entity,
+                    mode == main::_KEY_MODE_PICK
                 );
-                ecos::reg.patch<gfix::com_visual_t>(entity);
             }
             ecos::ent_t entity;
         } static listener{ picker_ent };
@@ -235,7 +235,7 @@ _DEFN_FUNC bool init_unit_gamer()
             .y = game::TCELL_ASIZE_Y * 3,
         });
         // visual
-        ecos::reg.emplace<gfix::com_visual_t>(grider_ent);
+        ecos::reg.emplace<gfix::com_rdrawn_t>(grider_ent, TRUTH);
         ecos::reg.emplace<gfix::com_rlayer_t>(grider_ent, 1);
         ecos::reg.emplace<gfix::com_color_t>(grider_ent, 0x20);
         ecos::reg.emplace<gfix::com_lgrid_t>(grider_ent, gfix::lgrid_t{

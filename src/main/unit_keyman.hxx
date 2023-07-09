@@ -23,7 +23,7 @@ typedef void(*key_func_t)(int narg);
 typedef char key_code_t;
 typedef const char* key_mesg_t;
 typedef struct key_bind_t key_bind_t;
-typedef darray_t<key_bind_t*> key_list_t;
+typedef data::dpack_t<key_bind_t*> key_list_t;
 typedef const char* key_path_t;
 
 typedef struct key_bind_t {

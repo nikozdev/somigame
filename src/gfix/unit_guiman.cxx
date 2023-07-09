@@ -10,7 +10,7 @@
 #include "../gfix/type_fonts.hxx"
 #include "../gfix/type_label.hxx"
 #include "../gfix/type_layer.hxx"
-#include "../gfix/type_visual.hxx"
+#include "../gfix/type_drawn.hxx"
 #include "../gfix/unit_camera.hxx"
 #include "../gfix/unit_guiman.hxx"
 #include "../game/unit_gamer.hxx"
@@ -56,7 +56,7 @@ _DEFN_FUNC v1b_t init_unit_guiman()
     // sizes
     ecos::reg.emplace<geom::com_rsize_t>(guiman_ent, geom::RSIZE_MAX, geom::RSIZE_MAX);
     // visual
-    ecos::reg.emplace<gfix::com_visual_t>(guiman_ent).set(gfix::visual_t::WEAK_SHOW);
+    ecos::reg.emplace<gfix::com_rdrawn_t>(guiman_ent, TRUTH);
     ecos::reg.emplace<com_rlayer_t>(guiman_ent, gfix::GUIS_LAYER);
     // family
     ecos::reg.emplace<ecos::com_family_t>(guiman_ent, get_camera_ent());
@@ -68,7 +68,7 @@ _DEFN_FUNC v1b_t init_unit_guiman()
         .y = geom::RSIZE_MAX - gfix::GUIS_RSIZE_Y*2,
     });
     // // visual
-    ecos::reg.emplace<gfix::com_visual_t>(quad_mm_entity);
+    ecos::reg.emplace<gfix::com_rdrawn_t>(quad_mm_entity, TRUTH);
     ecos::reg.emplace<gfix::com_rlayer_t>(quad_mm_entity);
     // // family
     ecos::reg.emplace<ecos::com_family_t>(quad_mm_entity, guiman_ent);
@@ -80,8 +80,7 @@ _DEFN_FUNC v1b_t init_unit_guiman()
         .y = gfix::GUIS_RSIZE_Y,
     });
     // // // visual
-    auto&text_died_visual= ecos::reg.emplace<gfix::com_visual_t>(text_died_entity);
-    text_died_visual.set(gfix::com_visual_t::HARD_HIDE);
+    ecos::reg.emplace<gfix::com_rdrawn_t>(text_died_entity, FALSE);
     ecos::reg.emplace<gfix::com_rlayer_t>(text_died_entity);
     ecos::reg.emplace<gfix::com_color_t>(text_died_entity, 0xe0);
     ecos::reg.emplace<gfix::com_imreg_t>(text_died_entity, gfix::_IMORI_FONT_MAIN);
@@ -103,14 +102,10 @@ _DEFN_FUNC v1b_t init_unit_guiman()
         void on_update_alive(ecos::reg_t&reg, ecos::ent_t ent)
         {
             const auto&alive = reg.get<game::com_alive_t>(ent);
-            this->visual->set(
-                visual_t::HARD_HIDE * (nums::get_sign(-1*alive.valid))
-            );
-            this->visual =&reg.patch<com_visual_t>(this->entity);
+            reg.replace<com_rdrawn_t>(this->entity, !alive.valid);
         }
         ecos::ent_t entity;
-        visual_t*visual;
-    } static text_died_listener{text_died_entity,&text_died_visual};
+    } static text_died_listener{text_died_entity};
     game::init_bot_signal.binder
     .connect<&text_died_listener_t::on_init_game>(text_died_listener);
     // // gui-mb
@@ -130,7 +125,7 @@ _DEFN_FUNC v1b_t init_unit_guiman()
         .y = geom::PIVOT_MIN,
     });
     // // visual
-    ecos::reg.emplace<com_visual_t>(quad_mb_entity);
+    ecos::reg.emplace<com_rdrawn_t>(quad_mb_entity, TRUTH);
     ecos::reg.emplace<com_rlayer_t>(quad_mb_entity);
     ecos::reg.emplace<com_color_t>(quad_mb_entity, 0x40);
     ecos::reg.emplace<com_imreg_t>(quad_mb_entity, gfix::_IMORI_META_NONE);
@@ -144,7 +139,7 @@ _DEFN_FUNC v1b_t init_unit_guiman()
         .y = geom::RSIZE_MAX,
     });
     // // // visual
-    ecos::reg.emplace<gfix::com_visual_t>(text_mb_entity);
+    ecos::reg.emplace<gfix::com_rdrawn_t>(text_mb_entity, TRUTH);
     ecos::reg.emplace<gfix::com_rlayer_t>(text_mb_entity);
     ecos::reg.emplace<gfix::com_color_t>(text_mb_entity, 0xe0);
     ecos::reg.emplace<gfix::com_imreg_t>(text_mb_entity, gfix::_IMORI_FONT_MAIN);
@@ -201,7 +196,7 @@ _DEFN_FUNC v1b_t init_unit_guiman()
         .y = geom::PIVOT_MAX,
     });
     // // visual
-    ecos::reg.emplace<gfix::com_visual_t>(quad_mt_entity);
+    ecos::reg.emplace<gfix::com_rdrawn_t>(quad_mt_entity, TRUTH);
     ecos::reg.emplace<gfix::com_rlayer_t>(quad_mt_entity);
     ecos::reg.emplace<gfix::com_color_t>(quad_mt_entity, 0x40);
     ecos::reg.emplace<gfix::com_imreg_t>(quad_mt_entity, gfix::_IMORI_META_NONE);
@@ -215,7 +210,7 @@ _DEFN_FUNC v1b_t init_unit_guiman()
         .y = geom::RSIZE_MAX,
     });
     // // // visual
-    ecos::reg.emplace<gfix::com_visual_t>(text_mt_entity);
+    ecos::reg.emplace<gfix::com_rdrawn_t>(text_mt_entity, TRUTH);
     ecos::reg.emplace<gfix::com_rlayer_t>(text_mt_entity);
     ecos::reg.emplace<gfix::com_color_t>(text_mt_entity, 0xe0);
     ecos::reg.emplace<gfix::com_imreg_t>(text_mt_entity, gfix::_IMORI_FONT_MAIN);
@@ -241,7 +236,7 @@ _DEFN_FUNC v1b_t init_unit_guiman()
                 "{:c}",
                 (ticker.now_mil / 1000) % 1000,
                 (ticker.now_mil) % 1000,
-                (ticker.fps_num),
+                (main::get_fps()),
                 text::ENDL_CHAR,
                 camera_gposi.x, camera_gposi.y,
                 camera_direc.x, camera_direc.y,
@@ -260,7 +255,7 @@ _DEFN_FUNC v1b_t init_unit_guiman()
         .y = geom::RSIZE_MAX - gfix::GUIS_RSIZE_Y*2,
     });
     // // visual
-    ecos::reg.emplace<com_visual_t>(quad_lm_entity);
+    ecos::reg.emplace<com_rdrawn_t>(quad_lm_entity, TRUTH);
     ecos::reg.emplace<com_rlayer_t>(quad_lm_entity);
     ecos::reg.emplace<com_color_t>(quad_lm_entity, 0x40);
     ecos::reg.emplace<com_imreg_t>(quad_lm_entity, gfix::_IMORI_META_NONE);
@@ -292,7 +287,7 @@ _DEFN_FUNC v1b_t init_unit_guiman()
         .y = geom::PIVOT_MIN,
     });
     // // // visual
-    ecos::reg.emplace<gfix::com_visual_t>(text_lm_entity);
+    ecos::reg.emplace<gfix::com_rdrawn_t>(text_lm_entity, TRUTH);
     ecos::reg.emplace<gfix::com_rlayer_t>(text_lm_entity);
     ecos::reg.emplace<gfix::com_color_t>(text_lm_entity, 0xe0);
     ecos::reg.emplace<gfix::com_imreg_t>(text_lm_entity, gfix::_IMORI_FONT_MAIN);
@@ -320,7 +315,7 @@ _DEFN_FUNC v1b_t init_unit_guiman()
         .y = geom::RSIZE_MAX - gfix::GUIS_RSIZE_Y*2,
     });
     // // visual
-    ecos::reg.emplace<gfix::com_visual_t>(quad_rm_entity);
+    ecos::reg.emplace<gfix::com_rdrawn_t>(quad_rm_entity, TRUTH);
     ecos::reg.emplace<gfix::com_rlayer_t>(quad_rm_entity);
     ecos::reg.emplace<gfix::com_color_t>(quad_rm_entity, 0x40);
     ecos::reg.emplace<gfix::com_imreg_t>(quad_rm_entity, _IMORI_META_NONE);
@@ -343,7 +338,7 @@ _DEFN_FUNC v1b_t init_unit_guiman()
         .y = geom::PIVOT_MIN,
     });
     // // // visual
-    ecos::reg.emplace<gfix::com_visual_t>(text_rm_entity);
+    ecos::reg.emplace<gfix::com_rdrawn_t>(text_rm_entity, TRUTH);
     ecos::reg.emplace<gfix::com_rlayer_t>(text_rm_entity);
     ecos::reg.emplace<gfix::com_color_t>(text_rm_entity, 0xe0);
     ecos::reg.emplace<gfix::com_imreg_t>(text_rm_entity, imreg_t{
@@ -391,9 +386,9 @@ _DEFN_FUNC v1b_t init_unit_guiman()
     .connect<&text_rm_listener_t::on_game_init>(text_rm_listener);
     // keyman
     main::key_bind_set(main::_KEY_MODE_MAIN, "igt", [](v1s_t narg){
-        auto&visual = ecos::reg.get<gfix::com_visual_t>(guiman_ent);
-        visual.set(visual.vet() ? gfix::visual_t::HARD_HIDE : gfix::visual_t::HARD_SHOW);
-        ecos::reg.patch<gfix::com_visual_t>(guiman_ent);
+        ecos::reg.replace<gfix::com_rdrawn_t>(guiman_ent,
+            !ecos::reg.get<gfix::com_rdrawn_t>(guiman_ent).valid
+        );
     });
     // final
     return TRUTH;

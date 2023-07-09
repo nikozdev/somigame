@@ -11,8 +11,11 @@
 #include "../geom/type_rects.hxx"
 #include "../geom/type_direc.hxx"
 #include "../gfix/type_layer.hxx"
-#include "../gfix/type_visual.hxx"
+#include "../gfix/type_drawn.hxx"
 #include "../gfix/unit_camera.hxx"
+#include "../game/type_sizes.hxx"
+#include "../game/type_coord.hxx"
+#include "../game/type_tcell.hxx"
 
 namespace somigame { namespace gfix {
 
@@ -49,15 +52,15 @@ _DEFN_FUNC v1b_t init_unit_camera()
         "camera init was called twice !? [camera_ent]={:d}",
         get_camera_ent()
     );
-    /* entity */
+    // entity
     camera_ent = ecos::reg.create();
-    /* sizes */
+    // sizes
     ecos::reg.emplace<geom::com_asize_t>(camera_ent, geom::asize_t{
         .x = gfix::CAMERA_ASIZE_X,
         .y = gfix::CAMERA_ASIZE_Y,
     });
     ecos::reg.emplace<geom::com_ratio_t>(camera_ent);
-    /* coord */
+    // coord
     ecos::reg.emplace<geom::com_aposi_t>(camera_ent);
     ecos::reg.emplace<geom::com_aplim_t>(camera_ent, geom::aplim_t{
         {
@@ -69,16 +72,16 @@ _DEFN_FUNC v1b_t init_unit_camera()
             +game::TGRID_AHALF_Y - gfix::CAMERA_ASIZE_Y/2,
         },
     });
-    /* geometry */
+    // direc
     ecos::reg.emplace<geom::com_direc_t>(camera_ent, -0, +1);
-    /* signal */
+    // signal
     ecos::reg.emplace<ecos::com_update_t<geom::com_gposi_t>>(camera_ent)
         .binder.connect<&on_proc_gposi>();
     ecos::reg.emplace<ecos::com_update_t<geom::com_grect_t>>(camera_ent)
         .binder.connect<&on_proc_grect>();
-    /* family */
+    // family
     ecos::reg.emplace<ecos::com_family_t>(camera_ent);
-    /* final */
+    // final
     return TRUTH;
 }
 _DEFN_FUNC v1b_t quit_unit_camera()
