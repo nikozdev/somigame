@@ -14,11 +14,14 @@ _DEFN_DATA signal_t<void(const ticker_t&)>ticker_second_signal; // on each secon
 // datadef
 
 static ticker_t ticker;
+count_t fps = 0; // frames per second number
 
 // getters
 
 _DEFN_FUNC const ticker_t&get_ticker()
 { return ticker; }
+_DEFN_FUNC const count_t get_fps()
+{ return fps; }
 
 // actions
 
@@ -27,7 +30,6 @@ _DEFN_FUNC bool init_unit_ticker()
     ticker.was_mil = 0;
     ticker.now_mil = 0;
     ticker.dif_mil = 0;
-    ticker.fps_num = 0;
     return TRUTH;
 } // init_unit_ticker
 _DEFN_FUNC bool quit_unit_ticker()
@@ -35,7 +37,6 @@ _DEFN_FUNC bool quit_unit_ticker()
     ticker.was_mil = 0;
     ticker.now_mil = 0;
     ticker.dif_mil = 0;
-    ticker.fps_num = 0;
     return TRUTH;
 } // quit_unit_ticker
 _DEFN_FUNC bool proc_unit_ticker()
@@ -48,7 +49,7 @@ _DEFN_FUNC bool proc_unit_ticker()
     call_on_sec(1, [&](const ticker_t&temp){
         if (ticker.dif_mil > 0)
         {
-            ticker.fps_num = 1'000 / ticker.dif_mil;
+            fps = 1'000 / ticker.dif_mil;
             ticker_second_signal.holder.publish(ticker);
         }
     });

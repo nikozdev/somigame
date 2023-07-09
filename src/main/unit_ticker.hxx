@@ -13,7 +13,6 @@ typedef struct ticker_t {
     timen_t dif_mil = 0; /* miliseconds between current and last frames */
     timen_t was_mil = 0; /* last frame milisecond */
     timen_t now_mil = 0; /* current frame milisecond */
-    count_t fps_num = 0; /* frames per second number */
 } ticker_t;
 
 // signals
@@ -24,6 +23,7 @@ _DECL_DATA signal_t<void(const ticker_t&)>ticker_second_signal; // on each secon
 // getters
 
 _DECL_FUNC const ticker_t&get_ticker();
+_DECL_FUNC const count_t get_fps();
 
 // actions
 
@@ -32,7 +32,6 @@ _DECL_FUNC bool quit_unit_ticker();
 _DECL_FUNC bool proc_unit_ticker();
 
 template<typename func_t, typename...args_t>
-[[deprecated("use signals instead")]] constexpr
 bool call_on_mil(timen_t mil, func_t func, args_t&&...args)
 {
     const auto ticker = get_ticker();
@@ -47,7 +46,6 @@ bool call_on_mil(timen_t mil, func_t func, args_t&&...args)
     else { return FALSE; }
 } // call_on_mil
 template<typename func_t, typename...args_t>
-[[deprecated("use signals instead")]] constexpr
 bool call_on_sec(timen_t sec, func_t func, args_t&&...args)
 {
     return call_on_mil(sec * 1000, func, std::forward<args_t>(args)...);
